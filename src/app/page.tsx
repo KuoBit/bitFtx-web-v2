@@ -1,36 +1,26 @@
-// src/app/layout.tsx
-import type { Metadata } from "next";
-import Link from "next/link";          // <-- important
-import "./globals.css";
-
-export const metadata: Metadata = {
-  title: "BitFtx — V2 (Staging)",
-  description: "BitFtx V2 website staging",
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// src/app/page.tsx
+export default function Home() {
   return (
-    <html lang="en" className="min-h-full">
-      <body className="min-h-screen bg-black text-white">
-        <header className="border-b border-white/10">
-          <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
-            <Link href="/" className="font-semibold">BitFtx</Link> 
-            <nav className="flex gap-6 text-sm text-white/80">
-              <Link href="/" className="hover:text-white">Home</Link>
-              <Link href="/tokenomics" className="hover:text-white">Tokenomics</Link>
-              <Link href="/links" className="hover:text-white">Links</Link>
-              <Link href="/transparency" className="hover:text-white">Transparency</Link>
-              <Link href="/roadmap" className="hover:text-white">Roadmap</Link>
-            </nav>
-          </div>
-        </header>
-        <main className="mx-auto max-w-6xl px-4 py-10">{children}</main>
-        <footer className="mt-16 border-t border-white/10">
-          <div className="mx-auto max-w-6xl px-4 py-6 text-xs text-white/60">
-            © {new Date().getFullYear()} BitFtx • All rights reserved
-          </div>
-        </footer>
-      </body>
-    </html>
+    <div className="space-y-8">
+      <h1 className="text-3xl font-semibold">BitFtx V2 — Staging</h1>
+      <p className="text-white/70 max-w-2xl">
+        This is the staging site for the BitFtx V2 relaunch.
+        We’ll add the trust dashboard, tokenomics, and /links page here next.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="rounded-xl border border-white/10 p-4">
+          <div className="text-sm text-white/60 mb-1">Status</div>
+          <div className="font-medium">Website V2 scaffold live</div>
+        </div>
+        <div className="rounded-xl border border-white/10 p-4">
+          <div className="text-sm text-white/60 mb-1">Token</div>
+          <div className="font-medium">V2 deployment planned</div>
+        </div>
+        <div className="rounded-xl border border-white/10 p-4">
+          <div className="text-sm text-white/60 mb-1">Next</div>
+          <div className="font-medium">Add /links & tokenomics pages</div>
+        </div>
+      </div>
+    </div>
   );
 }
