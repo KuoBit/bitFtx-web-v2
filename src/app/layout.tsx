@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link"; 
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,11 +15,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
             <div className="font-semibold">BitFtx</div>
             <nav className="flex gap-6 text-sm text-white/80">
-              <a href="/" className="hover:text-white">Home</a>
-              <a href="/tokenomics" className="hover:text-white">Tokenomics</a>
-              <a href="/links" className="hover:text-white">Links</a>
-              <a href="/transparency" className="hover:text-white">Transparency</a>
-              <a href="/roadmap" className="hover:text-white">Roadmap</a>
+              <Link href="/" className="hover:text-white">Home</Link>
+              <Link href="/tokenomics" className="hover:text-white">Tokenomics</Link>
+              <Link href="/links" className="hover:text-white">Links</Link>
+              <Link href="/transparency" className="hover:text-white">Transparency</Link>
+              <Link href="/roadmap" className="hover:text-white">Roadmap</Link>
             </nav>
           </div>
         </header>
