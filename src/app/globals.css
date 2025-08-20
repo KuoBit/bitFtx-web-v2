@@ -1,11 +1,7 @@
+/* src/app/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --bg: #0a0a0a;
-  --fg: #ffffff;
-}
-
-html, body { background: var(--bg); color: var(--fg); }
+:root { color-scheme: dark; }
 a { text-decoration: none; }
