@@ -2,6 +2,8 @@ import Hero from "@/components/Hero";
 import StatsStrip from "@/components/StatsStrip";
 import FeatureGrid from "@/components/FeatureGrid";
 import CTA from "@/components/CTA";
+import "@/styles/globals.css";
+
 
 export default function Home() {
   return (
