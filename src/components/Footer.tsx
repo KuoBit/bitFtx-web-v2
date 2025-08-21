@@ -1,4 +1,3 @@
-// src/components/Footer.tsx
 import Link from "next/link";
 
 export default function Footer() {
@@ -49,7 +48,6 @@ export default function Footer() {
         <div className="mx-auto max-w-6xl px-4 py-6 text-xs text-white/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <div>© {new Date().getFullYear()} BitFtx • All rights reserved</div>
           <div className="flex gap-4">
-            {/* Swap these for real links */}
             <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">X</a>
             <a href="https://t.me" target="_blank" rel="noopener noreferrer" className="hover:text-white">Telegram</a>
             <a href="https://discord.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">Discord</a>

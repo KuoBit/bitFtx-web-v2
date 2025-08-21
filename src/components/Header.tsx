@@ -1,13 +1,11 @@
-// src/components/Header.tsx
 "use client";
 
 import Link from "next/link";
 import { useState } from "react";
 
-type NavItem = { label: string; href: string; external?: boolean };
+type NavItem = { label: string; href: string };
 
 const coreNav: NavItem[] = [
-  { label: "Home", href: "/" },
   { label: "Tokenomics", href: "/tokenomics" },
   { label: "Transparency", href: "/transparency" },
   { label: "Roadmap", href: "/roadmap" },
@@ -32,7 +30,6 @@ const moreNav: { section: string; items: NavItem[] }[] = [
     section: "Prediction",
     items: [
       { label: "Markets", href: "/markets" },
-      // Market details are routed via /markets/[id] — not linked here
     ],
   },
   {
@@ -56,9 +53,7 @@ export default function Header() {
     <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur supports-[backdrop-filter]:bg-black/50">
       <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/" className="font-semibold tracking-wide">
-            BitFtx
-          </Link>
+          <Link href="/" className="font-semibold tracking-wide">BitFtx</Link>
           <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-xs text-emerald-300">
             Staging
           </span>
@@ -67,9 +62,7 @@ export default function Header() {
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-6 text-sm text-white/80">
           {coreNav.map((item) => (
-            <Link key={item.href} href={item.href} className="hover:text-white">
-              {item.label}
-            </Link>
+            <Link key={item.href} href={item.href} className="hover:text-white">{item.label}</Link>
           ))}
 
           <div className="relative">
@@ -90,9 +83,7 @@ export default function Header() {
                 <div className="grid grid-cols-3 gap-4">
                   {moreNav.map((group) => (
                     <div key={group.section}>
-                      <div className="mb-2 text-xs uppercase tracking-wide text-white/50">
-                        {group.section}
-                      </div>
+                      <div className="mb-2 text-xs uppercase tracking-wide text-white/50">{group.section}</div>
                       <ul className="space-y-1">
                         {group.items.map((i) => (
                           <li key={i.href}>
@@ -113,7 +104,6 @@ export default function Header() {
             )}
           </div>
 
-          {/* Primary CTA slot (can swap to Buy/Connect later) */}
           <Link
             href="/links"
             className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
@@ -122,7 +112,7 @@ export default function Header() {
           </Link>
         </nav>
 
-        {/* Mobile toggler */}
+        {/* Mobile */}
         <button
           className="md:hidden rounded-lg border border-white/10 px-3 py-1.5 text-sm"
           onClick={() => setMobileOpen((v) => !v)}
@@ -133,42 +123,24 @@ export default function Header() {
         </button>
       </div>
 
-      {/* Mobile drawer */}
       {mobileOpen && (
         <div className="md:hidden border-t border-white/10">
           <div className="mx-auto max-w-6xl px-4 py-4 space-y-4">
             <div className="grid grid-cols-2 gap-3">
+              <Link href="/" className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10" onClick={() => setMobileOpen(false)}>Home</Link>
               {coreNav.map((i) => (
-                <Link
-                  key={i.href}
-                  href={i.href}
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
-                  onClick={() => setMobileOpen(false)}
-                >
+                <Link key={i.href} href={i.href} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10" onClick={() => setMobileOpen(false)}>
                   {i.label}
                 </Link>
               ))}
-              <Link
-                href="/links"
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
-                onClick={() => setMobileOpen(false)}
-              >
-                Official Links
-              </Link>
+              <Link href="/links" className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10" onClick={() => setMobileOpen(false)}>Official Links</Link>
             </div>
 
             <div className="pt-2">
-              <div className="mb-2 text-xs uppercase tracking-wide text-white/50">
-                More
-              </div>
+              <div className="mb-2 text-xs uppercase tracking-wide text-white/50">More</div>
               <div className="grid grid-cols-2 gap-2">
                 {moreNav.flatMap((g) => g.items).map((i) => (
-                  <Link
-                    key={i.href}
-                    href={i.href}
-                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
-                    onClick={() => setMobileOpen(false)}
-                  >
+                  <Link key={i.href} href={i.href} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10" onClick={() => setMobileOpen(false)}>
                     {i.label}
                   </Link>
                 ))}

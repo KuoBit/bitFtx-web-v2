@@ -5,17 +5,3 @@
 
 :root { color-scheme: dark; }
 a { text-decoration: none; }
-
-/* Reusable card + button styles */
-.btn {
-  @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition;
-}
-.btn-primary {
-  @apply bg-emerald-500/90 hover:bg-emerald-400 text-black shadow shadow-emerald-500/20;
-}
-.btn-ghost {
-  @apply border border-white/10 bg-white/5 hover:bg-white/10 text-white;
-}
-.card {
-  @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur;
-}

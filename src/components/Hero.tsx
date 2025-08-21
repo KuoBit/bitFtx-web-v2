@@ -22,9 +22,7 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.08 }}
           >
-            Clean tokenomics, locked liquidity, public wallets, and a
-            phased rollout for markets. Track everything in real‑time on our
-            Transparency page.
+            Clean tokenomics, locked liquidity, public wallets, and a phased rollout for markets. Track everything in real‑time on our Transparency page.
           </motion.p>
 
           <motion.div
@@ -33,10 +31,16 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.16 }}
           >
-            <Link href="/links" className="btn btn-primary">
+            <Link
+              href="/links"
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium bg-emerald-500/90 hover:bg-emerald-400 text-black shadow shadow-emerald-500/20 transition"
+            >
               Official Links
             </Link>
-            <Link href="/tokenomics" className="btn btn-ghost">
+            <Link
+              href="/tokenomics"
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border border-white/10 bg-white/5 hover:bg-white/10 text-white transition"
+            >
               View Tokenomics
             </Link>
           </motion.div>
@@ -64,17 +68,10 @@ export default function Hero() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
-          {/* Replace with your logo/visual later */}
           <div className="absolute -top-8 -right-8 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(0,197,142,0.35),transparent_60%)] blur-xl" />
           <div className="absolute -bottom-10 -left-10 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(15,111,255,0.35),transparent_60%)] blur-xl" />
           <div className="relative z-10 h-full w-full grid place-items-center">
-            <Image
-              src="/next.svg"
-              width={160}
-              height={160}
-              alt="BitFtx Hero Placeholder"
-              className="opacity-70"
-            />
+            <Image src="/next.svg" width={160} height={160} alt="BitFtx Hero Placeholder" className="opacity-70" />
           </div>
         </motion.div>
       </div>
