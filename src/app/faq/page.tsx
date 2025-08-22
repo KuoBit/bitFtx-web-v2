@@ -1,5 +1,6 @@
 // /src/app/faq/page.tsx
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 export const metadata = {
   title: "FAQ — BitFtx",
@@ -7,7 +8,7 @@ export const metadata = {
     "Answers about BitFtx: prediction engine, markets, odds, settlement, safety, token utility, listing, fees, and more.",
 };
 
-type QA = { q: string; a: JSX.Element; a_text: string };
+type QA = { q: string; a: ReactNode; a_text: string };
 type Cat = { id: string; title: string; items: QA[] };
 
 // -------------------------------
