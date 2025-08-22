@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import Image from "next/image";
 
 /**
  * BitFtx Logo V2 (minimal) + Hero (kept)
@@ -93,8 +94,34 @@ export function LogoLockup({ size = 40, animated = false }: { size?: number; ani
 }
 
 // Backward-compatible name used in Header
-export function AnimatedLogo({ size = 40 }: { size?: number }) {
-  return <LogoLockup size={size} animated={false} />;
+export function AnimatedLogo({
+  size = 40,
+  src = "/images/logo.png",
+  alt = "BitFtx Brain Logo",
+  className = "",
+}: {
+  size?: number;
+  src?: string;
+  alt?: string;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8 }}
+      className={className}
+    >
+      <Image
+        src={src}
+        alt={alt}
+        width={size}
+        height={size}
+        className="drop-shadow-lg animate-pulse"
+        priority
+      />
+    </motion.div>
+  );
 }
 
 // =============================
