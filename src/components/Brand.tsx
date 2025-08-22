@@ -9,7 +9,7 @@ import Image from "next/image";
  * Exports:
  *   - AnimatedLogo (PNG brain, old fade/slide + pulse)
  *   - LogoMark / LogoLockup (kept, not used in hero)
- *   - HeroMasthead (uses AnimatedLogo before the hero viz)
+ *   - HeroMasthead (uses AnimatedLogo + Market Odds cards)
  */
 
 // =============================
@@ -68,7 +68,7 @@ export function LogoLockup({ size = 40, animated = false }: { size?: number; ani
 // =============================
 export function AnimatedLogo({
   size = 40,
-  src = "/images/logo.png", // ⬅️ uses public/logo.png
+  src = "/images/logo.png", // uses public/logo.png
   alt = "BitFtx Brain Logo",
   className = "",
 }: {
@@ -100,12 +100,13 @@ export function HeroMasthead() {
       </div>
 
       <div className="mx-auto max-w-7xl px-6 pt-20 pb-24 sm:pt-28 sm:pb-32">
-        {/* ⬇️ Use the same animated PNG logo before the hero */}
+        {/* Logo + strapline */}
         <div className="flex items-center gap-3">
-          <AnimatedLogo size={100} /> {/* was <LogoLockup size={56} /> */}
+          <AnimatedLogo size={100} />
           <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/70">Predict • Trade • Earn</span>
         </div>
 
+        {/* headline/copy/ctas */}
         <div className="mt-8 max-w-3xl">
           <h1 className="text-4xl font-semibold leading-tight md:text-6xl">
             The crypto prediction exchange
@@ -124,10 +125,12 @@ export function HeroMasthead() {
           </div>
         </div>
 
+        {/* Market Odds animation (Sample B) */}
         <div className="relative mt-14 rounded-3xl border border-white/10 bg-white/5 p-4">
-          <AnimatedMarketViz reduced={reduced} />
+          <HeroMarketOdds reduced={reduced} />
         </div>
 
+        {/* trust badges */}
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Badge label="Audited" />
           <Badge label="Non-custodial" />
@@ -144,109 +147,133 @@ function Badge({ label }: { label: string }) {
 }
 
 // =============================
-//  HERO SVG Animation (unchanged)
+//  HERO — Market Cards + Odds (Sample B)
+//  (Random odds now; can be wired to live data later.)
 // =============================
-function AnimatedMarketViz({ reduced = false }: { reduced?: boolean }) {
+type MarketCard = { id: string; title: string; odds: number; trend: "up" | "down" };
+
+function HeroMarketOdds({ reduced = false }: { reduced?: boolean }) {
+  const [cards, setCards] = React.useState<MarketCard[]>(() => [
+    { id: "m1", title: "BTC > $100k by Q4?", odds: rand(55, 75), trend: "up" },
+    { id: "m2", title: "ETH ETF approved?", odds: rand(45, 65), trend: "down" },
+    { id: "m3", title: "Fed cuts this month?", odds: rand(35, 55), trend: "down" },
+  ]);
+
+  // Gently nudge odds every few seconds
+  React.useEffect(() => {
+    if (reduced) return;
+    const t = setInterval(() => {
+      setCards((prev) =>
+        prev.map((c) => {
+          const delta = (Math.random() * 2 - 1) * 2; // -2..+2
+          let next = clamp(Math.round(c.odds + delta), 12, 92);
+          const trend: "up" | "down" = next > c.odds ? "up" : next < c.odds ? "down" : c.trend;
+          return { ...c, odds: next, trend };
+        })
+      );
+    }, 2800);
+    return () => clearInterval(t);
+  }, [reduced]);
+
   return (
     <div className="relative">
-      <svg viewBox="0 0 1200 380" className="h-[42vh] w-full rounded-2xl bg-gradient-to-b from-white/5 to-white/0" aria-label="BitFtx market visualization">
-        <defs>
-          <linearGradient id="strokeGrad" x1="0" x2="1">
-            <stop offset="0%" stopColor="#00C58E" />
-            <stop offset="100%" stopColor="#0F6FFF" />
-          </linearGradient>
-          <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(0,197,142,0.18)" />
-            <stop offset="100%" stopColor="rgba(15,111,255,0.00)" />
-          </linearGradient>
-        </defs>
-        <Grid />
-        <Candles />
-        <PredictionCurve reduced={reduced} />
-        <Orbiters reduced={reduced} />
-      </svg>
+      {/* soft gradient top overlay */}
+      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-b from-white/5 to-transparent" />
+
+      <div className="flex flex-col items-center gap-5 md:flex-row md:items-stretch md:justify-center">
+        {cards.map((c, i) => (
+          <motion.div
+            key={c.id}
+            className="w-full max-w-[18.5rem] rounded-2xl border border-white/10 bg-[#0D1117] p-4 shadow-lg"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: i * 0.1, duration: 0.5 }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-white/70">Market</div>
+              <TrendPill trend={c.trend} />
+            </div>
+            <div className="mt-1 font-medium leading-snug">{c.title}</div>
+
+            <motion.div
+              className="mt-4 rounded-lg border border-white/10 p-3"
+              animate={
+                reduced
+                  ? undefined
+                  : { boxShadow: ["0 0 0 rgba(0,0,0,0)", "0 0 24px rgba(0,197,142,0.25)", "0 0 0 rgba(0,0,0,0)"] }
+              }
+              transition={{ repeat: Infinity, duration: 3.6 }}
+            >
+              <div className="text-xs text-white/60">Current odds</div>
+              <div className="flex items-end gap-2">
+                <motion.div
+                  key={c.odds} // animate when value changes
+                  initial={{ scale: 0.98, opacity: 0.9 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.25 }}
+                  className="text-3xl font-semibold text-emerald-300"
+                >
+                  {c.odds}%
+                </motion.div>
+                <div className="text-xs text-white/50">({c.trend === "up" ? "rising" : "falling"})</div>
+              </div>
+
+              {/* tiny progress bar vibe */}
+              <div className="mt-3 h-1.5 w-full rounded-full bg-white/10">
+                <motion.div
+                  className="h-1.5 rounded-full"
+                  style={{ background: "linear-gradient(90deg,#00C58E,#0F6FFF)" }}
+                  animate={reduced ? { width: `${c.odds}%` } : { width: [`${c.odds - 5}%`, `${c.odds}%`] }}
+                  transition={{ duration: 0.8 }}
+                />
+              </div>
+            </motion.div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <a href="/markets" className="text-sm text-emerald-300 hover:text-emerald-200">
+                View market →
+              </a>
+              <button className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-white hover:bg-white/5">Predict</button>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* subtle hint chip */}
+      <motion.div
+        className="pointer-events-none mx-auto mt-5 w-max rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70"
+        animate={reduced ? undefined : { scale: [1, 0.98, 1], opacity: [0.9, 1, 0.9] }}
+        transition={{ repeat: Infinity, duration: 1.8 }}
+      >
+        Randomized demo odds — live feed coming soon
+      </motion.div>
     </div>
   );
 }
 
-function Grid() {
-  const lines = Array.from({ length: 9 }).map((_, i) => <line key={i} x1={0} x2={1200} y1={40 + i * 34} y2={40 + i * 34} stroke="rgba(255,255,255,0.08)" />);
-  return <g>{lines}</g>;
-}
-
-function Candles() {
-  const data = [
-    { x: 40, o: 190, h: 220, l: 180, c: 210 },
-    { x: 90, o: 205, h: 230, l: 195, c: 220 },
-    { x: 140, o: 218, h: 240, l: 210, c: 212 },
-    { x: 190, o: 212, h: 238, l: 200, c: 235 },
-    { x: 240, o: 234, h: 260, l: 230, c: 252 },
-    { x: 290, o: 250, h: 275, l: 245, c: 260 },
-    { x: 340, o: 255, h: 290, l: 250, c: 285 },
-    { x: 390, o: 286, h: 305, l: 275, c: 280 },
-    { x: 440, o: 278, h: 310, l: 270, c: 300 },
-    { x: 490, o: 300, h: 330, l: 295, c: 320 },
-    { x: 540, o: 318, h: 345, l: 310, c: 340 },
-    { x: 590, o: 338, h: 360, l: 330, c: 355 },
-  ];
+function TrendPill({ trend }: { trend: "up" | "down" }) {
+  const up = trend === "up";
   return (
-    <g>
-      {data.map((d, i) => {
-        const up = d.c >= d.o;
-        const color = up ? "#00C58E" : "#E43D4E";
-        return (
-          <g key={i}>
-            <line x1={d.x} x2={d.x} y1={d.h} y2={d.l} stroke={color} strokeOpacity={0.6} />
-            <motion.rect
-              x={d.x - 6}
-              y={Math.min(d.o, d.c)}
-              width={12}
-              height={Math.max(3, Math.abs(d.c - d.o))}
-              rx={2}
-              fill={color}
-              initial={{ opacity: 0, scaleY: 0 }}
-              animate={{ opacity: 0.8, scaleY: 1 }}
-              transition={{ delay: i * 0.05, duration: 0.5 }}
-              style={{ transformOrigin: `${d.x}px ${Math.min(d.o, d.c)}px` }} // ✅ correct prop in React
-            />
-          </g>
-        );
-      })}
-    </g>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
+        up ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-red-400/30 bg-red-400/10 text-red-300"
+      }`}
+    >
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
+        {up ? (
+          <path d="M1 6 L5 2 L9 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        ) : (
+          <path d="M1 4 L5 8 L9 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        )}
+      </svg>
+      {up ? "Up" : "Down"}
+    </span>
   );
 }
 
-function PredictionCurve({ reduced }: { reduced: boolean }) {
-  const d = "M20,300 C140,260 180,240 240,252 C320,270 360,220 420,240 C520,278 600,220 700,250 C800,280 900,220 1080,260";
-  return (
-    <g>
-      <motion.path d={d} fill="url(#fillGrad)" stroke="none" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.2 }} />
-      <motion.path
-        d={d}
-        fill="none"
-        stroke="url(#strokeGrad)"
-        strokeWidth={3}
-        strokeLinecap="round"
-        strokeDasharray="8 8"
-        animate={reduced ? {} : { strokeDashoffset: [0, -160] }}
-        transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
-      />
-    </g>
-  );
-}
-
-function Orbiters({ reduced }: { reduced: boolean }) {
-  return (
-    <g>
-      <motion.circle cx={1060} cy={90} r={6} fill="#0F6FFF" initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }} />
-      <motion.g style={{ originX: 800, originY: 140 }} animate={reduced ? {} : { rotate: 360 }} transition={{ repeat: Infinity, duration: 14, ease: "linear" }}>
-        <circle cx={800} cy={140} r={40} fill="none" stroke="rgba(255,255,255,0.1)" />
-        <circle cx={840} cy={140} r={5} fill="#00C58E" />
-      </motion.g>
-    </g>
-  );
-}
-
+// =============================
+//  Preview (kept for local dev)
+// =============================
 export default function Preview() {
   return (
     <div className="min-h-screen bg-[#07090B] text-white">
@@ -261,4 +288,14 @@ export default function Preview() {
       <HeroMasthead />
     </div>
   );
+}
+
+// =============================
+//  utils
+// =============================
+function rand(min: number, max: number) {
+  return Math.round(min + Math.random() * (max - min));
+}
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n));
 }
