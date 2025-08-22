@@ -166,7 +166,7 @@ function HeroMarketOdds({ reduced = false }: { reduced?: boolean }) {
       setCards((prev) =>
         prev.map((c) => {
           const delta = (Math.random() * 2 - 1) * 2; // -2..+2
-          let next = clamp(Math.round(c.odds + delta), 12, 92);
+          const next = clamp(Math.round(c.odds + delta), 12, 92); // ⬅️ const instead of let
           const trend: "up" | "down" = next > c.odds ? "up" : next < c.odds ? "down" : c.trend;
           return { ...c, odds: next, trend };
         })
