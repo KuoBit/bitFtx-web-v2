@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { AnimatedLogo } from "@/components/Brand";
 
 type NavItem = { label: string; href: string };
 
@@ -52,12 +53,14 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur supports-[backdrop-filter]:bg-black/50">
       <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="font-semibold tracking-wide">BitFtx</Link>
-          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-xs text-emerald-300">
-            Staging
-          </span>
-        </div>
+      <div className="flex items-center gap-3">
+  <Link href="/" aria-label="BitFtx home" className="flex items-center">
+    <AnimatedLogo size={40} />
+  </Link>
+  <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-xs text-emerald-300">
+    Staging
+  </span>
+</div>
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-6 text-sm text-white/80">
