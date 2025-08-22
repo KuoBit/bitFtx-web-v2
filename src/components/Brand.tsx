@@ -3,15 +3,12 @@ import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 /**
- * BitFtx Animated Logo & Hero
+ * BitFtx Animated Logo & Hero (fixed TS + ESLint)
  * -------------------------------------------------------------
  * Drop this file in:  /src/components/Brand.tsx
- * Usage:
- *   import { AnimatedLogo, HeroMasthead } from "@/components/Brand";
- *   <AnimatedLogo size={40} />
- *   <HeroMasthead />
- *
- * Tailwind required (already in your project). No extra libs.
+ * Exports:
+ *   - AnimatedLogo
+ *   - HeroMasthead
  */
 
 // -----------------------------
@@ -27,7 +24,7 @@ export function AnimatedLogo({
   animated?: boolean;
 }) {
   const prefersReduced = useReducedMotion();
-  const spin = animated && !prefersReduced;
+  const spin = animated && !!prefersReduced === false ? true : animated && !!prefersReduced === true ? false : animated;
 
   const S = size;
   const stroke = "#00C58E"; // primary
@@ -71,12 +68,7 @@ export function AnimatedLogo({
 
         {/* B monogram with upward arrow (prediction/growth) */}
         <g>
-          <path
-            d="M26 16 v32"
-            stroke={stroke}
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
+          <path d="M26 16 v32" stroke={stroke} strokeWidth="3" strokeLinecap="round" />
           <path
             d="M26 20 h8 a6 6 0 0 1 0 12 h-8 M26 36 h10 a7 7 0 0 1 0 14 h-10"
             fill="none"
@@ -85,7 +77,7 @@ export function AnimatedLogo({
             strokeLinecap="round"
           />
           {/* Arrow */}
-          <path d="M36 24 L42 18 L44 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round"/>
+          <path d="M36 24 L42 18 L44 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" />
         </g>
 
         {/* Orbiting prediction dot */}
@@ -100,9 +92,7 @@ export function AnimatedLogo({
       </svg>
 
       {/* Wordmark (optional) */}
-      <span className="hidden sm:inline text-lg font-semibold tracking-tight">
-        BitFtx
-      </span>
+      <span className="hidden sm:inline text-lg font-semibold tracking-tight">BitFtx</span>
     </div>
   );
 }
@@ -112,7 +102,7 @@ export function AnimatedLogo({
 // -----------------------------
 export function HeroMasthead() {
   const prefersReduced = useReducedMotion();
-  const duration = prefersReduced ? 0 : 9;
+  const reduced = !!prefersReduced; // coerce boolean | null -> boolean
 
   return (
     <section className="relative isolate overflow-hidden">
@@ -144,7 +134,7 @@ export function HeroMasthead() {
 
         {/* Animated canvas area */}
         <div className="relative mt-14 rounded-3xl border border-white/10 bg-white/5 p-4">
-          <AnimatedMarketViz reduced={prefersReduced} />
+          <AnimatedMarketViz reduced={reduced} />
         </div>
 
         {/* Social proof row (placeholders) */}
@@ -161,9 +151,7 @@ export function HeroMasthead() {
 
 function Badge({ label }: { label: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-sm text-white/80">
-      {label}
-    </div>
+    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-sm text-white/80">{label}</div>
   );
 }
 
@@ -171,7 +159,6 @@ function Badge({ label }: { label: string }) {
 // Animated Market Visualization (SVG)
 // -----------------------------
 function AnimatedMarketViz({ reduced = false }: { reduced?: boolean }) {
-  // Simple candlesticks + flowing prediction curve + rotating orbit dots
   return (
     <div className="relative">
       <svg
@@ -194,7 +181,7 @@ function AnimatedMarketViz({ reduced = false }: { reduced?: boolean }) {
         <Grid />
 
         {/* Candlesticks */}
-        <Candles reduced={reduced} />
+        <Candles />
 
         {/* Flowing prediction curve */}
         <PredictionCurve reduced={reduced} />
@@ -213,7 +200,7 @@ function Grid() {
   return <g>{lines}</g>;
 }
 
-function Candles({ reduced }: { reduced: boolean }) {
+function Candles() {
   // Synthetic series for visuals only
   const data = [
     { x: 40, o: 190, h: 220, l: 180, c: 210 },
@@ -258,9 +245,7 @@ function Candles({ reduced }: { reduced: boolean }) {
 }
 
 function PredictionCurve({ reduced }: { reduced: boolean }) {
-  // Curve path
-  const d =
-    "M20,300 C140,260 180,240 240,252 C320,270 360,220 420,240 C520,278 600,220 700,250 C800,280 900,220 1080,260";
+  const d = "M20,300 C140,260 180,240 240,252 C320,270 360,220 420,240 C520,278 600,220 700,250 C800,280 900,220 1080,260";
 
   return (
     <g>
