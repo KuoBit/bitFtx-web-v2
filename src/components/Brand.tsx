@@ -3,106 +3,106 @@ import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 /**
- * BitFtx Animated Logo & Hero (fixed TS + ESLint)
+ * BitFtx Logo V2 (minimal) + Hero (kept)
  * -------------------------------------------------------------
- * Drop this file in:  /src/components/Brand.tsx
+ * File: /src/components/Brand.tsx
  * Exports:
- *   - AnimatedLogo
- *   - HeroMasthead
+ *   - AnimatedLogo (now a clean, minimal mark + wordmark lockup)
+ *   - LogoMark (mark-only)
+ *   - LogoLockup (mark + word)
+ *   - HeroMasthead (unchanged hero)
  */
 
-// -----------------------------
-// Animated BitFtx Logo
-// -----------------------------
-export function AnimatedLogo({
-  size = 48,
-  label = "BitFtx",
-  animated = true,
-}: {
-  size?: number;
-  label?: string;
-  animated?: boolean;
-}) {
+// =============================
+//  LOGO — Minimal "B" + Arrow
+// =============================
+export function LogoMark({ size = 48, animated = true }: { size?: number; animated?: boolean }) {
   const prefersReduced = useReducedMotion();
-  const spin = animated && !!prefersReduced === false ? true : animated && !!prefersReduced === true ? false : animated;
-
+  const pulse = animated && !prefersReduced;
   const S = size;
-  const stroke = "#00C58E"; // primary
-  const ring = "url(#bitftx-ring)";
-  const accent = "#0F6FFF"; // secondary
 
   return (
+    <svg
+      width={S}
+      height={S}
+      viewBox="0 0 64 64"
+      role="img"
+      aria-label="BitFtx mark"
+      className="inline-block"
+    >
+      <defs>
+        <linearGradient id="bf-grad" x1="0" x2="1">
+          <stop offset="0%" stopColor="#00C58E" />
+          <stop offset="100%" stopColor="#0F6FFF" />
+        </linearGradient>
+        <filter id="bf-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Vertical spine of B */}
+      <line x1="22" y1="14" x2="22" y2="50" stroke="url(#bf-grad)" strokeWidth="4" strokeLinecap="round" />
+
+      {/* Upper bowl */}
+      <path
+        d="M22 18 H36 C44 18 46 30 36 30 H22"
+        fill="none"
+        stroke="url(#bf-grad)"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Lower bowl */}
+      <path
+        d="M22 34 H38 C48 34 48 50 36 50 H22"
+        fill="none"
+        stroke="url(#bf-grad)"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Up-right arrow (growth) tucked into negative space */}
+      <motion.path
+        d="M34 28 L44 20 L46 26"
+        fill="none"
+        stroke="#0F6FFF"
+        strokeWidth="3"
+        strokeLinecap="round"
+        initial={{ pathLength: 0, opacity: 0.8 }}
+        animate={pulse ? { pathLength: 1, opacity: 1 } : { pathLength: 1, opacity: 1 }}
+        transition={pulse ? { duration: 1, repeat: Infinity, repeatDelay: 2 } : {}}
+        filter="url(#bf-glow)"
+      />
+    </svg>
+  );
+}
+
+export function LogoLockup({ size = 40, animated = false }: { size?: number; animated?: boolean }) {
+  return (
     <div className="inline-flex items-center gap-2 select-none">
-      <svg
-        width={S}
-        height={S}
-        viewBox="0 0 64 64"
-        role="img"
-        aria-label={label}
-        className="drop-shadow-[0_0_12px_rgba(0,197,142,0.25)]"
-      >
-        <defs>
-          <radialGradient id="bitftx-ring" cx="50%" cy="50%" r="65%">
-            <stop offset="0%" stopColor="#00C58E" stopOpacity=".95" />
-            <stop offset="60%" stopColor="#00C58E" stopOpacity=".35" />
-            <stop offset="100%" stopColor="#00C58E" stopOpacity="0" />
-          </radialGradient>
-          <linearGradient id="bitftx-stroke" x1="0" x2="1">
-            <stop offset="0%" stopColor="#00C58E" />
-            <stop offset="100%" stopColor="#0F6FFF" />
-          </linearGradient>
-        </defs>
-
-        {/* Glow ring */}
-        <circle cx="32" cy="32" r="28" fill={ring} />
-        {/* Thin outer outline for crispness */}
-        <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.08)" />
-
-        {/* Neural network nodes */}
-        <g stroke="url(#bitftx-stroke)" strokeWidth="1.5" opacity="0.9">
-          <path d="M14 36 C20 20, 44 20, 50 36" fill="none" />
-          <path d="M14 28 C24 44, 40 44, 50 28" fill="none" />
-          <path d="M20 22 C28 18, 36 18, 44 22" fill="none" />
-          <path d="M20 42 C28 46, 36 46, 44 42" fill="none" />
-        </g>
-
-        {/* B monogram with upward arrow (prediction/growth) */}
-        <g>
-          <path d="M26 16 v32" stroke={stroke} strokeWidth="3" strokeLinecap="round" />
-          <path
-            d="M26 20 h8 a6 6 0 0 1 0 12 h-8 M26 36 h10 a7 7 0 0 1 0 14 h-10"
-            fill="none"
-            stroke="url(#bitftx-stroke)"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-          {/* Arrow */}
-          <path d="M36 24 L42 18 L44 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" />
-        </g>
-
-        {/* Orbiting prediction dot */}
-        <motion.g
-          animate={spin ? { rotate: 360 } : { rotate: 0 }}
-          transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
-          style={{ originX: 32, originY: 32 }}
-        >
-          <circle cx="32" cy="7" r="3" fill={accent} />
-          <circle cx="32" cy="7" r="6" fill="none" stroke="rgba(255,255,255,0.12)" />
-        </motion.g>
-      </svg>
-
-      {/* Wordmark (optional) */}
-      <span className="hidden sm:inline text-lg font-semibold tracking-tight">BitFtx</span>
+      <LogoMark size={size} animated={animated} />
+      <span className="text-lg font-semibold tracking-tight">BitFtx</span>
     </div>
   );
 }
 
-// -----------------------------
-// Hero Masthead Animation
-// -----------------------------
+// Backward-compatible name used in Header
+export function AnimatedLogo({ size = 40 }: { size?: number }) {
+  return <LogoLockup size={size} animated={false} />;
+}
+
+// =============================
+//  HERO MASTHEAD (kept)
+// =============================
 export function HeroMasthead() {
   const prefersReduced = useReducedMotion();
-  const reduced = !!prefersReduced; // coerce boolean | null -> boolean
+  const reduced = !!prefersReduced;
 
   return (
     <section className="relative isolate overflow-hidden">
@@ -114,7 +114,7 @@ export function HeroMasthead() {
 
       <div className="mx-auto max-w-7xl px-6 pt-20 pb-24 sm:pt-28 sm:pb-32">
         <div className="flex items-center gap-3">
-          <AnimatedLogo size={56} />
+          <LogoLockup size={56} />
           <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/70">Predict • Trade • Earn</span>
         </div>
 
@@ -132,12 +132,10 @@ export function HeroMasthead() {
           </div>
         </div>
 
-        {/* Animated canvas area */}
         <div className="relative mt-14 rounded-3xl border border-white/10 bg-white/5 p-4">
           <AnimatedMarketViz reduced={reduced} />
         </div>
 
-        {/* Social proof row (placeholders) */}
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Badge label="Audited" />
           <Badge label="Non‑custodial" />
@@ -155,17 +153,13 @@ function Badge({ label }: { label: string }) {
   );
 }
 
-// -----------------------------
-// Animated Market Visualization (SVG)
-// -----------------------------
+// =============================
+//  HERO SVG Animation (unchanged)
+// =============================
 function AnimatedMarketViz({ reduced = false }: { reduced?: boolean }) {
   return (
     <div className="relative">
-      <svg
-        viewBox="0 0 1200 380"
-        className="h-[42vh] w-full rounded-2xl bg-gradient-to-b from-white/5 to-white/0"
-        aria-label="BitFtx market visualization"
-      >
+      <svg viewBox="0 0 1200 380" className="h-[42vh] w-full rounded-2xl bg-gradient-to-b from-white/5 to-white/0" aria-label="BitFtx market visualization">
         <defs>
           <linearGradient id="strokeGrad" x1="0" x2="1">
             <stop offset="0%" stopColor="#00C58E" />
@@ -176,17 +170,9 @@ function AnimatedMarketViz({ reduced = false }: { reduced?: boolean }) {
             <stop offset="100%" stopColor="rgba(15,111,255,0.00)" />
           </linearGradient>
         </defs>
-
-        {/* Subtle grid */}
         <Grid />
-
-        {/* Candlesticks */}
         <Candles />
-
-        {/* Flowing prediction curve */}
         <PredictionCurve reduced={reduced} />
-
-        {/* Orbiting signals */}
         <Orbiters reduced={reduced} />
       </svg>
     </div>
@@ -201,7 +187,6 @@ function Grid() {
 }
 
 function Candles() {
-  // Synthetic series for visuals only
   const data = [
     { x: 40, o: 190, h: 220, l: 180, c: 210 },
     { x: 90, o: 205, h: 230, l: 195, c: 220 },
@@ -216,7 +201,6 @@ function Candles() {
     { x: 540, o: 318, h: 345, l: 310, c: 340 },
     { x: 590, o: 338, h: 360, l: 330, c: 355 },
   ];
-
   return (
     <g>
       {data.map((d, i) => {
@@ -246,17 +230,9 @@ function Candles() {
 
 function PredictionCurve({ reduced }: { reduced: boolean }) {
   const d = "M20,300 C140,260 180,240 240,252 C320,270 360,220 420,240 C520,278 600,220 700,250 C800,280 900,220 1080,260";
-
   return (
     <g>
-      <motion.path
-        d={d}
-        fill="url(#fillGrad)"
-        stroke="none"
-        initial={{ pathLength: 0 }}
-        animate={{ pathLength: 1 }}
-        transition={{ duration: 1.2 }}
-      />
+      <motion.path d={d} fill="url(#fillGrad)" stroke="none" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.2 }} />
       <motion.path
         d={d}
         fill="none"
@@ -274,20 +250,8 @@ function PredictionCurve({ reduced }: { reduced: boolean }) {
 function Orbiters({ reduced }: { reduced: boolean }) {
   return (
     <g>
-      <motion.circle
-        cx={1060}
-        cy={90}
-        r={6}
-        fill="#0F6FFF"
-        initial={{ opacity: 0, scale: 0.6 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.4 }}
-      />
-      <motion.g
-        style={{ originX: 800, originY: 140 }}
-        animate={reduced ? {} : { rotate: 360 }}
-        transition={{ repeat: Infinity, duration: 14, ease: "linear" }}
-      >
+      <motion.circle cx={1060} cy={90} r={6} fill="#0F6FFF" initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }} />
+      <motion.g style={{ originX: 800, originY: 140 }} animate={reduced ? {} : { rotate: 360 }} transition={{ repeat: Infinity, duration: 14, ease: "linear" }}>
         <circle cx={800} cy={140} r={40} fill="none" stroke="rgba(255,255,255,0.1)" />
         <circle cx={840} cy={140} r={5} fill="#00C58E" />
       </motion.g>
@@ -295,15 +259,12 @@ function Orbiters({ reduced }: { reduced: boolean }) {
   );
 }
 
-// -----------------------------
-// Preview block (for Canvas demo only)
-// -----------------------------
 export default function Preview() {
   return (
     <div className="min-h-screen bg-[#07090B] text-white">
       <div className="mx-auto max-w-7xl px-6 py-8">
         <div className="flex items-center justify-between">
-          <AnimatedLogo size={48} />
+          <LogoLockup size={48} />
           <a className="rounded-xl border border-white/15 px-4 py-2 text-sm hover:bg-white/5" href="#">Docs</a>
         </div>
       </div>
