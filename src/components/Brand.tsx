@@ -1,21 +1,19 @@
+// /src/components/Brand.tsx
 "use client";
 import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 
 /**
- * BitFtx Logo V2 (minimal) + Hero (kept)
- * -------------------------------------------------------------
- * File: /src/components/Brand.tsx
+ * BitFtx Brand
  * Exports:
- *   - AnimatedLogo (now a clean, minimal mark + wordmark lockup)
- *   - LogoMark (mark-only)
- *   - LogoLockup (mark + word)
- *   - HeroMasthead (unchanged hero)
+ *   - AnimatedLogo (PNG brain, old fade/slide + pulse)
+ *   - LogoMark / LogoLockup (kept, not used in hero)
+ *   - HeroMasthead (uses AnimatedLogo before the hero viz)
  */
 
 // =============================
-//  LOGO — Minimal "B" + Arrow
+//  LOGO — Minimal "B" + Arrow (kept)
 // =============================
 export function LogoMark({ size = 48, animated = true }: { size?: number; animated?: boolean }) {
   const prefersReduced = useReducedMotion();
@@ -23,14 +21,7 @@ export function LogoMark({ size = 48, animated = true }: { size?: number; animat
   const S = size;
 
   return (
-    <svg
-      width={S}
-      height={S}
-      viewBox="0 0 64 64"
-      role="img"
-      aria-label="BitFtx mark"
-      className="inline-block"
-    >
+    <svg width={S} height={S} viewBox="0 0 64 64" role="img" aria-label="BitFtx mark" className="inline-block">
       <defs>
         <linearGradient id="bf-grad" x1="0" x2="1">
           <stop offset="0%" stopColor="#00C58E" />
@@ -45,30 +36,9 @@ export function LogoMark({ size = 48, animated = true }: { size?: number; animat
         </filter>
       </defs>
 
-      {/* Vertical spine of B */}
       <line x1="22" y1="14" x2="22" y2="50" stroke="url(#bf-grad)" strokeWidth="4" strokeLinecap="round" />
-
-      {/* Upper bowl */}
-      <path
-        d="M22 18 H36 C44 18 46 30 36 30 H22"
-        fill="none"
-        stroke="url(#bf-grad)"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      {/* Lower bowl */}
-      <path
-        d="M22 34 H38 C48 34 48 50 36 50 H22"
-        fill="none"
-        stroke="url(#bf-grad)"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      {/* Up-right arrow (growth) tucked into negative space */}
+      <path d="M22 18 H36 C44 18 46 30 36 30 H22" fill="none" stroke="url(#bf-grad)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M22 34 H38 C48 34 48 50 36 50 H22" fill="none" stroke="url(#bf-grad)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
       <motion.path
         d="M34 28 L44 20 L46 26"
         fill="none"
@@ -93,10 +63,12 @@ export function LogoLockup({ size = 40, animated = false }: { size?: number; ani
   );
 }
 
-// Backward-compatible name used in Header
+// =============================
+//  LOGO — PNG brain w/ old animation
+// =============================
 export function AnimatedLogo({
   size = 40,
-  src = "/images/logo.png",
+  src = "/images/logo.png", // ⬅️ uses public/logo.png
   alt = "BitFtx Brain Logo",
   className = "",
 }: {
@@ -106,26 +78,14 @@ export function AnimatedLogo({
   className?: string;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8 }}
-      className={className}
-    >
-      <Image
-        src={src}
-        alt={alt}
-        width={size}
-        height={size}
-        className="drop-shadow-lg animate-pulse"
-        priority
-      />
+    <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className={className}>
+      <Image src={src} alt={alt} width={size} height={size} className="drop-shadow-lg animate-pulse" priority />
     </motion.div>
   );
 }
 
 // =============================
-//  HERO MASTHEAD (kept)
+//  HERO MASTHEAD
 // =============================
 export function HeroMasthead() {
   const prefersReduced = useReducedMotion();
@@ -140,22 +100,27 @@ export function HeroMasthead() {
       </div>
 
       <div className="mx-auto max-w-7xl px-6 pt-20 pb-24 sm:pt-28 sm:pb-32">
+        {/* ⬇️ Use the same animated PNG logo before the hero */}
         <div className="flex items-center gap-3">
-          <LogoLockup size={56} />
+          <AnimatedLogo size={100} /> {/* was <LogoLockup size={56} /> */}
           <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/70">Predict • Trade • Earn</span>
         </div>
 
         <div className="mt-8 max-w-3xl">
           <h1 className="text-4xl font-semibold leading-tight md:text-6xl">
             The crypto prediction exchange
-            <span className="block text-white/70">powered by real‑time intelligence</span>
+            <span className="block text-white/70">powered by real-time intelligence</span>
           </h1>
           <p className="mt-6 text-lg text-white/70">
-            Create or join markets on crypto moves, events, and trends. Transparent on‑chain settlement, low fees, and liquidity incentives.
+            Create or join markets on crypto moves, events, and trends. Transparent on-chain settlement, low fees, and liquidity incentives.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <a href="/app" className="rounded-xl bg-[#00C58E] px-5 py-3 font-medium text-[#031613] hover:bg-[#00A77A] transition">Launch App</a>
-            <a href="/tokenomics" className="rounded-xl border border-white/15 px-5 py-3 font-medium text-white hover:bg-white/5 transition">Tokenomics</a>
+            <a href="/app" className="rounded-xl bg-[#00C58E] px-5 py-3 font-medium text-[#031613] hover:bg-[#00A77A] transition">
+              Launch App
+            </a>
+            <a href="/tokenomics" className="rounded-xl border border-white/15 px-5 py-3 font-medium text-white hover:bg-white/5 transition">
+              Tokenomics
+            </a>
           </div>
         </div>
 
@@ -165,7 +130,7 @@ export function HeroMasthead() {
 
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Badge label="Audited" />
-          <Badge label="Non‑custodial" />
+          <Badge label="Non-custodial" />
           <Badge label="Low fees" />
           <Badge label="Live incentives" />
         </div>
@@ -175,9 +140,7 @@ export function HeroMasthead() {
 }
 
 function Badge({ label }: { label: string }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-sm text-white/80">{label}</div>
-  );
+  return <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-sm text-white/80">{label}</div>;
 }
 
 // =============================
@@ -207,9 +170,7 @@ function AnimatedMarketViz({ reduced = false }: { reduced?: boolean }) {
 }
 
 function Grid() {
-  const lines = Array.from({ length: 9 }).map((_, i) => (
-    <line key={i} x1={0} x2={1200} y1={40 + i * 34} y2={40 + i * 34} stroke="rgba(255,255,255,0.08)" />
-  ));
+  const lines = Array.from({ length: 9 }).map((_, i) => <line key={i} x1={0} x2={1200} y1={40 + i * 34} y2={40 + i * 34} stroke="rgba(255,255,255,0.08)" />);
   return <g>{lines}</g>;
 }
 
@@ -246,7 +207,7 @@ function Candles() {
               initial={{ opacity: 0, scaleY: 0 }}
               animate={{ opacity: 0.8, scaleY: 1 }}
               transition={{ delay: i * 0.05, duration: 0.5 }}
-              transform-origin={`${d.x} ${Math.min(d.o, d.c)}`}
+              style={{ transformOrigin: `${d.x}px ${Math.min(d.o, d.c)}px` }} // ✅ correct prop in React
             />
           </g>
         );
@@ -292,7 +253,9 @@ export default function Preview() {
       <div className="mx-auto max-w-7xl px-6 py-8">
         <div className="flex items-center justify-between">
           <LogoLockup size={48} />
-          <a className="rounded-xl border border-white/15 px-4 py-2 text-sm hover:bg-white/5" href="#">Docs</a>
+          <a className="rounded-xl border border-white/15 px-4 py-2 text-sm hover:bg-white/5" href="#">
+            Docs
+          </a>
         </div>
       </div>
       <HeroMasthead />
