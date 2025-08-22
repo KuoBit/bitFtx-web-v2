@@ -1,4 +1,6 @@
+// /src/components/Footer.tsx
 import Link from "next/link";
+import SocialLinks from "@/components/SocialLinks";
 
 export default function Footer() {
   return (
@@ -47,11 +49,8 @@ export default function Footer() {
       <div className="border-t border-white/10">
         <div className="mx-auto max-w-6xl px-4 py-6 text-xs text-white/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <div>© {new Date().getFullYear()} BitFtx • All rights reserved</div>
-          <div className="flex gap-4">
-            <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">X</a>
-            <a href="https://t.me" target="_blank" rel="noopener noreferrer" className="hover:text-white">Telegram</a>
-            <a href="https://discord.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">Discord</a>
-          </div>
+          {/* Replaces hard-coded anchors with canonical social links */}
+          <SocialLinks compact />
         </div>
       </div>
     </footer>
