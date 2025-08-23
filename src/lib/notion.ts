@@ -220,7 +220,14 @@ export async function getPostBySlug(slugValue: string) {
 }
 
 // ---------- Blocks (content) ----------
-export async function getBlocks(pageId: string) {
+// Type guard to keep only full blocks
+function isFullBlock(
+  b: BlockObjectResponse | PartialBlockObjectResponse
+): b is BlockObjectResponse {
+  return (b as BlockObjectResponse).object === "block" && "type" in b;
+}
+
+export async function getBlocks(pageId: string): Promise<BlockObjectResponse[]> {
   const blocks: Array<BlockObjectResponse | PartialBlockObjectResponse> = [];
   let cursor: string | undefined = undefined;
 
@@ -234,5 +241,6 @@ export async function getBlocks(pageId: string) {
     cursor = resp.has_more ? resp.next_cursor ?? undefined : undefined;
   } while (cursor);
 
-  return blocks;
+  // Return only full blocks to satisfy NotionBlocks' prop types
+  return blocks.filter(isFullBlock);
 }
