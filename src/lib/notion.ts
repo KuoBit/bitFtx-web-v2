@@ -11,10 +11,9 @@ import type {
   UserObjectResponse,
   PartialUserObjectResponse,
   GroupObjectResponse,
-  DatabaseObjectResponse,            // <--
-  PartialDatabaseObjectResponse,     // <--
+  DatabaseObjectResponse,
+  PartialDatabaseObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 export const NOTION_DB_ID = process.env.NOTION_DB_ID as string;
@@ -35,6 +34,7 @@ export type BlogPost = {
 };
 
 // ---------- Type guards & utilities ----------
+// Accept the full union that can appear in QueryDatabaseResponse.results
 function isFullPage(
   v:
     | PageObjectResponse
@@ -124,7 +124,6 @@ function getAuthor(props: PropertyMap, keys: string | string[]): string | null {
       const name = extractUserName(first);
       if (name) return name;
     }
-    // If it's a group or no name available, fall through
     return null;
   }
 
@@ -174,26 +173,19 @@ function getUrlProp(props: PropertyMap, keys: string | string[]): string | null 
 export function pageToPost(page: PageObjectResponse): BlogPost {
   const props = page.properties;
 
-  // Canonical fields (with soft casing fallbacks)
+  // Exact DB names with light fallbacks
   const title = getTitle(props, ["Title", "title"]);
   const slug =
-    getRichText(props, ["slug", "Slug"]) || getTitle(props, ["slug", "Slug"]);
-  const published = getCheckbox(props, ["published", "Published"]);
-  const publish_date = getDate(props, [
-    "publish_date",
-    "Publish Date",
-    "Publish date",
-    "Date",
-  ]);
-  const tags = getMultiSelect(props, ["tags", "Tags"]);
+    getRichText(props, ["Slug", "slug"]) || getTitle(props, ["Slug", "slug"]); // if someone made slug a title in future
+  const published = getCheckbox(props, ["Published", "published"]);
+  const publish_date = getDate(props, ["Publish_Date", "publish_date", "Date"]);
+  const tags = getMultiSelect(props, ["Tags", "tags"]);
   const author = getAuthor(props, ["Author", "author"]);
 
-  // Optional extras used by your pages
   const excerptTxt =
     getRichText(props, ["excerpt", "Excerpt", "summary", "Summary"]);
   const excerpt = excerptTxt ? excerptTxt.trim() : null;
 
-  // Cover: page cover first, else property (files/url) under "cover"/"Cover"/"Hero"
   const coverFromPage = getPageCoverUrl(page);
   const coverFromProp =
     getFilesFirstUrl(props, ["cover", "Cover", "Hero", "hero"]) ||
@@ -206,12 +198,12 @@ export function pageToPost(page: PageObjectResponse): BlogPost {
     slug,
     published,
     publish_date,
-    date: publish_date, // compatibility alias
+    date: publish_date, // alias
     tags,
     author,
     excerpt,
     cover,
-    notionUrl: page.url, // Notion workspace URL (works if page is shared/public)
+    notionUrl: page.url,
   };
 }
 
@@ -228,8 +220,8 @@ export async function queryPosts(
 
 export async function getAllPublishedPosts() {
   return queryPosts({
-    filter: { and: [{ property: "published", checkbox: { equals: true } }] },
-    sorts: [{ property: "publish_date", direction: "descending" }],
+    filter: { and: [{ property: "Published", checkbox: { equals: true } }] },
+    sorts: [{ property: "Publish_Date", direction: "descending" }],
   });
 }
 
@@ -242,8 +234,8 @@ export async function getPostBySlug(slugValue: string) {
   const results = await queryPosts({
     filter: {
       and: [
-        { property: "slug", rich_text: { equals: slugValue } },
-        { property: "published", checkbox: { equals: true } },
+        { property: "Slug", rich_text: { equals: slugValue } },
+        { property: "Published", checkbox: { equals: true } },
       ],
     },
     page_size: 1,
