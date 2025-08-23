@@ -22,13 +22,13 @@ export type BlogPost = {
   title: string;
   slug: string;
   published: boolean;
-  publish_date?: string;        // ISO date or undefined
-  date?: string;                // compat alias for components using post.date
+  publish_date?: string; // ISO date or undefined
+  date?: string;         // compat alias for components using post.date
   tags: string[];
   author: string | null;
   excerpt: string | null;
   cover: string | null;
-  notionUrl: string;            // for "View on Notion"
+  notionUrl: string;     // for "View on Notion"
 };
 
 // ---------- Type guards & utilities ----------
@@ -89,17 +89,7 @@ function getMultiSelect(props: PropertyMap, keys: string | string[]): string[] {
   return p.multi_select.map((m) => m.name);
 }
 
-import type {
-  UserObjectResponse,
-  PartialUserObjectResponse,
-} from "@notionhq/client/build/src/api-endpoints";
-
-function hasUserName(
-  u: UserObjectResponse | PartialUserObjectResponse
-): u is UserObjectResponse {
-  return "name" in u;
-}
-
+// --- People/Author helpers ---
 type AnyPerson = UserObjectResponse | PartialUserObjectResponse | GroupObjectResponse;
 
 function isUserObject(
@@ -127,7 +117,7 @@ function getAuthor(props: PropertyMap, keys: string | string[]): string | null {
       const name = extractUserName(first);
       if (name) return name;
     }
-    // If it's a group or no name is available, fall through to other props or null
+    // If it's a group or no name available, fall through
     return null;
   }
 
@@ -143,7 +133,6 @@ function getAuthor(props: PropertyMap, keys: string | string[]): string | null {
 
   return null;
 }
-
 
 // --- Cover helpers ---
 function getPageCoverUrl(page: PageObjectResponse): string | null {
@@ -256,7 +245,6 @@ export async function getPostBySlug(slugValue: string) {
 }
 
 // ---------- Blocks (content) ----------
-// Type guard to keep only full blocks
 function isFullBlock(
   b: BlockObjectResponse | PartialBlockObjectResponse
 ): b is BlockObjectResponse {
@@ -277,6 +265,5 @@ export async function getBlocks(pageId: string): Promise<BlockObjectResponse[]> 
     cursor = resp.has_more ? resp.next_cursor ?? undefined : undefined;
   } while (cursor);
 
-  // Return only full blocks to satisfy NotionBlocks' prop types
   return blocks.filter(isFullBlock);
 }
