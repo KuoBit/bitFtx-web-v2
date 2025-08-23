@@ -13,19 +13,23 @@ import type {
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 export const NOTION_DB_ID = process.env.NOTION_DB_ID as string;
 
+// Public shape used by your app
 export type BlogPost = {
   id: string;
   title: string;
   slug: string;
   published: boolean;
   publish_date: string | null;
+  /** Compatibility alias for components using `post.date` */
+  date: string | null;
   tags: string[];
   author: string | null;
-  // New optional fields expected by page.tsx
+  /** Optional (fallbacks handled in pages) */
   excerpt: string | null;
   cover: string | null;
 };
 
+// ---------- Type guards & utilities ----------
 function isFullPage(
   page: PageObjectResponse | PartialPageObjectResponse
 ): page is PageObjectResponse {
@@ -34,36 +38,63 @@ function isFullPage(
 
 type PropertyMap = PageObjectResponse["properties"];
 
-function getTitle(props: PropertyMap, key: string): string {
+/** Pick the first existing property key from a priority list (case flexibility). */
+function pickKey(props: PropertyMap, candidates: string[]): string | null {
+  for (const k of candidates) {
+    if (k in props) return k;
+  }
+  return null;
+}
+
+function getTitle(props: PropertyMap, keys: string | string[]): string {
+  const key = Array.isArray(keys) ? pickKey(props, keys) : keys;
+  if (!key) return "";
   const p = props[key];
   if (!p || p.type !== "title") return "";
   return p.title.map((r) => r.plain_text).join("");
 }
-function getRichText(props: PropertyMap, key: string): string {
+
+function getRichText(props: PropertyMap, keys: string | string[]): string {
+  const key = Array.isArray(keys) ? pickKey(props, keys) : keys;
+  if (!key) return "";
   const p = props[key];
   if (!p || p.type !== "rich_text") return "";
   return p.rich_text.map((r) => r.plain_text).join("");
 }
-function getCheckbox(props: PropertyMap, key: string): boolean {
+
+function getCheckbox(props: PropertyMap, keys: string | string[]): boolean {
+  const key = Array.isArray(keys) ? pickKey(props, keys) : keys;
+  if (!key) return false;
   const p = props[key];
   return !!(p && p.type === "checkbox" && p.checkbox === true);
 }
-function getDate(props: PropertyMap, key: string): string | null {
+
+function getDate(props: PropertyMap, keys: string | string[]): string | null {
+  const key = Array.isArray(keys) ? pickKey(props, keys) : keys;
+  if (!key) return null;
   const p = props[key];
   if (!p || p.type !== "date" || !p.date?.start) return null;
   return p.date.start;
 }
-function getMultiSelect(props: PropertyMap, key: string): string[] {
+
+function getMultiSelect(props: PropertyMap, keys: string | string[]): string[] {
+  const key = Array.isArray(keys) ? pickKey(props, keys) : keys;
+  if (!key) return [];
   const p = props[key];
   if (!p || p.type !== "multi_select") return [];
   return p.multi_select.map((m) => m.name);
 }
-function getAuthor(props: PropertyMap, key: string): string | null {
+
+function getAuthor(props: PropertyMap, keys: string | string[]): string | null {
+  const key = Array.isArray(keys) ? pickKey(props, keys) : keys;
+  if (!key) return null;
   const p = props[key];
   if (!p) return null;
+
   if (p.type === "people" && p.people.length > 0) {
     const first = p.people[0];
-    // @ts-expect-error runtime property not in endpoint typings
+    // Notion Users object often carries a 'name' at runtime; not in endpoint typings
+    // @ts-expect-error runtime property from Users API
     return (first as unknown as { name?: string; email?: string }).name ?? null;
   }
   if (p.type === "rich_text") {
@@ -77,7 +108,7 @@ function getAuthor(props: PropertyMap, key: string): string | null {
   return null;
 }
 
-// --- New: helpers to pull a cover URL from page or properties ---
+// --- Cover helpers ---
 function getPageCoverUrl(page: PageObjectResponse): string | null {
   const c = page.cover;
   if (!c) return null;
@@ -85,7 +116,9 @@ function getPageCoverUrl(page: PageObjectResponse): string | null {
   if (c.type === "file") return c.file.url ?? null;
   return null;
 }
-function getFilesFirstUrl(props: PropertyMap, key: string): string | null {
+function getFilesFirstUrl(props: PropertyMap, keys: string | string[]): string | null {
+  const key = Array.isArray(keys) ? pickKey(props, keys) : keys;
+  if (!key) return null;
   const p = props[key];
   if (!p || p.type !== "files" || !p.files.length) return null;
   const f = p.files[0];
@@ -93,34 +126,37 @@ function getFilesFirstUrl(props: PropertyMap, key: string): string | null {
   if (f.type === "external") return f.external?.url ?? null;
   return null;
 }
-function getUrlProp(props: PropertyMap, key: string): string | null {
+function getUrlProp(props: PropertyMap, keys: string | string[]): string | null {
+  const key = Array.isArray(keys) ? pickKey(props, keys) : keys;
+  if (!key) return null;
   const p = props[key];
   if (!p || p.type !== "url") return null;
   return p.url ?? null;
 }
 
+// ---------- Mapper ----------
 export function pageToPost(page: PageObjectResponse): BlogPost {
   const props = page.properties;
 
-  const title = getTitle(props, "Title");
-  const slug = getRichText(props, "slug") || getTitle(props, "slug");
-  const published = getCheckbox(props, "published");
-  const publish_date = getDate(props, "publish_date");
-  const tags = getMultiSelect(props, "tags");
-  const author = getAuthor(props, "Author");
+  // Your canonical fields (with soft casing fallbacks)
+  const title = getTitle(props, ["Title", "title"]);
+  const slug =
+    getRichText(props, ["slug", "Slug"]) || getTitle(props, ["slug", "Slug"]);
+  const published = getCheckbox(props, ["published", "Published"]);
+  const publish_date = getDate(props, ["publish_date", "Publish Date", "Publish date", "Date"]);
+  const tags = getMultiSelect(props, ["tags", "Tags"]);
+  const author = getAuthor(props, ["Author", "author"]);
 
-  // New: optional excerpt (supports either "excerpt" or "Excerpt")
+  // Optional extras used by your pages
   const excerptTxt =
-    getRichText(props, "excerpt") || getRichText(props, "Excerpt");
+    getRichText(props, ["excerpt", "Excerpt", "summary", "Summary"]);
   const excerpt = excerptTxt ? excerptTxt.trim() : null;
 
-  // New: cover from page.cover, or properties "cover"/"Cover" as files/url
+  // Cover: page cover first, else property (files/url) under "cover"/"Cover"/"Hero"
   const coverFromPage = getPageCoverUrl(page);
   const coverFromProp =
-    getFilesFirstUrl(props, "cover") ||
-    getFilesFirstUrl(props, "Cover") ||
-    getUrlProp(props, "cover") ||
-    getUrlProp(props, "Cover");
+    getFilesFirstUrl(props, ["cover", "Cover", "Hero", "hero"]) ||
+    getUrlProp(props, ["cover", "Cover", "Hero", "hero"]);
   const cover = coverFromPage || coverFromProp;
 
   return {
@@ -129,6 +165,7 @@ export function pageToPost(page: PageObjectResponse): BlogPost {
     slug,
     published,
     publish_date,
+    date: publish_date, // compatibility alias
     tags,
     author,
     excerpt,
@@ -136,6 +173,7 @@ export function pageToPost(page: PageObjectResponse): BlogPost {
   };
 }
 
+// ---------- Queries ----------
 export async function queryPosts(
   params: Omit<QueryDatabaseParameters, "database_id"> = {}
 ) {
@@ -143,22 +181,26 @@ export async function queryPosts(
     database_id: NOTION_DB_ID,
     ...params,
   });
-  return response.results.filter(isFullPage).map((p) => pageToPost(p));
+  return response.results.filter(isFullPage).map(pageToPost);
 }
+
 export async function getAllPublishedPosts() {
   return queryPosts({
     filter: { and: [{ property: "published", checkbox: { equals: true } }] },
     sorts: [{ property: "publish_date", direction: "descending" }],
   });
 }
+
+/** Compatibility alias used by your pages */
 export async function getPosts() {
   return getAllPublishedPosts();
 }
-export async function getPostBySlug(slug: string) {
+
+export async function getPostBySlug(slugValue: string) {
   const results = await queryPosts({
     filter: {
       and: [
-        { property: "slug", rich_text: { equals: slug } },
+        { property: "slug", rich_text: { equals: slugValue } },
         { property: "published", checkbox: { equals: true } },
       ],
     },
@@ -166,9 +208,12 @@ export async function getPostBySlug(slug: string) {
   });
   return results[0] ?? null;
 }
+
+// ---------- Blocks (content) ----------
 export async function getBlocks(pageId: string) {
   const blocks: Array<BlockObjectResponse | PartialBlockObjectResponse> = [];
   let cursor: string | undefined = undefined;
+
   do {
     const resp: ListBlockChildrenResponse = await notion.blocks.children.list({
       block_id: pageId,
@@ -178,5 +223,6 @@ export async function getBlocks(pageId: string) {
     blocks.push(...resp.results);
     cursor = resp.has_more ? resp.next_cursor ?? undefined : undefined;
   } while (cursor);
+
   return blocks;
 }
