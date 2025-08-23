@@ -86,6 +86,17 @@ function getMultiSelect(props: PropertyMap, keys: string | string[]): string[] {
   return p.multi_select.map((m) => m.name);
 }
 
+import type {
+  UserObjectResponse,
+  PartialUserObjectResponse,
+} from "@notionhq/client/build/src/api-endpoints";
+
+function hasUserName(
+  u: UserObjectResponse | PartialUserObjectResponse
+): u is UserObjectResponse {
+  return "name" in u;
+}
+
 function getAuthor(props: PropertyMap, keys: string | string[]): string | null {
   const key = Array.isArray(keys) ? pickKey(props, keys) : keys;
   if (!key) return null;
@@ -94,9 +105,9 @@ function getAuthor(props: PropertyMap, keys: string | string[]): string | null {
 
   if (p.type === "people" && p.people.length > 0) {
     const first = p.people[0];
-    // Notion Users often include a runtime 'name' not typed in endpoints
-    // @ts-expect-error runtime property from Users API
-    return (first as unknown as { name?: string; email?: string }).name ?? null;
+    return hasUserName(first) && typeof first.name === "string" && first.name
+      ? first.name
+      : null;
   }
   if (p.type === "rich_text") {
     const txt = p.rich_text.map((r) => r.plain_text).join("").trim();
