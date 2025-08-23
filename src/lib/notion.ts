@@ -1,187 +1,163 @@
-// /src/lib/notion.ts
+// src/lib/notion.ts
 import { Client } from "@notionhq/client";
 import type {
-  BlockObjectResponse,
-  PartialBlockObjectResponse,
+  QueryDatabaseParameters,
+  QueryDatabaseResponse,
   PageObjectResponse,
   PartialPageObjectResponse,
-  RichTextItemResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 
-const notion = new Client({ auth: process.env.NOTION_TOKEN! });
-const DB_ID = process.env.NOTION_BLOG_DB!;
+// If you store NOTION_TOKEN / NOTION_DB_ID in .env.local
+const notion = new Client({ auth: process.env.NOTION_TOKEN });
+export const NOTION_DB_ID = process.env.NOTION_DB_ID as string;
 
-// ---------- Public types ----------
-export type Post = {
+// ----- Types you use across the app -----
+export type BlogPost = {
   id: string;
-  slug: string;
   title: string;
-  excerpt?: string;
-  date?: string;
+  slug: string;
+  published: boolean;
+  publish_date: string | null; // ISO date (YYYY-MM-DD) or null
   tags: string[];
-  cover?: string | null;
-  author?: string;
-  notionUrl: string;
+  author: string | null;
 };
 
-// ---------- Type guards / utils ----------
+// ----- Type guards & helpers -----
 function isFullPage(
-  p: PageObjectResponse | PartialPageObjectResponse
-): p is PageObjectResponse {
-  return (p as PageObjectResponse).object === "page" && "properties" in p;
+  page: PageObjectResponse | PartialPageObjectResponse
+): page is PageObjectResponse {
+  return "properties" in page;
 }
 
-function isFullBlock(
-  b: BlockObjectResponse | PartialBlockObjectResponse
-): b is BlockObjectResponse {
-  return (b as BlockObjectResponse).object === "block" && "type" in b;
+type PropertyMap = PageObjectResponse["properties"];
+
+/** Safely get a "Title" property as string */
+function getTitle(props: PropertyMap, key: string): string {
+  const p = props[key];
+  if (!p || p.type !== "title") return "";
+  return p.title.map((r) => r.plain_text).join("");
 }
 
-function rtToPlain(rt: RichTextItemResponse[] | undefined): string {
-  if (!rt) return "";
-  return rt.map((r) => r.plain_text ?? "").join("");
+/** Safely get a "Rich Text" property as string */
+function getRichText(props: PropertyMap, key: string): string {
+  const p = props[key];
+  if (!p || p.type !== "rich_text") return "";
+  return p.rich_text.map((r) => r.plain_text).join("");
 }
 
-function coverFrom(page: PageObjectResponse): string | null {
-  const c = page.cover;
-  if (!c) return null;
-  if (c.type === "external") return c.external.url;
-  if (c.type === "file") return c.file.url; // time-limited; we revalidate the page
+/** Safely get a "Checkbox" property as boolean */
+function getCheckbox(props: PropertyMap, key: string): boolean {
+  const p = props[key];
+  return !!(p && p.type === "checkbox" && p.checkbox === true);
+}
+
+/** Safely get a "Date" property as YYYY-MM-DD (start) or null */
+function getDate(props: PropertyMap, key: string): string | null {
+  const p = props[key];
+  if (!p || p.type !== "date" || !p.date?.start) return null;
+  return p.date.start;
+}
+
+/** Safely get a "Multi-select" property as string[] */
+function getMultiSelect(props: PropertyMap, key: string): string[] {
+  const p = props[key];
+  if (!p || p.type !== "multi_select") return [];
+  return p.multi_select.map((m) => m.name);
+}
+
+/** Safely get a "People" or "Rich Text" author as string (fallback to first person name) */
+function getAuthor(props: PropertyMap, key: string): string | null {
+  const p = props[key];
+  if (!p) return null;
+
+  if (p.type === "people" && p.people.length > 0) {
+    // The API does not always include person name in a simple place; fallback to plain email if needed.
+    const first = p.people[0];
+    // name can be absent; you may enrich via Users API if you want.
+    // @ts-expect-error: user.name is not typed in endpoints bundle, but often present at runtime.
+    return (first as unknown as { name?: string; email?: string }).name ?? null;
+  }
+
+  if (p.type === "rich_text") {
+    const txt = p.rich_text.map((r) => r.plain_text).join("").trim();
+    return txt || null;
+  }
+
+  if (p.type === "title") {
+    const txt = p.title.map((r) => r.plain_text).join("").trim();
+    return txt || null;
+  }
+
   return null;
 }
 
-// ----- Notion property readers (case-sensitive to your DB) -----
-function getTitle(page: PageObjectResponse): string {
-  const p = page.properties["Title"];
-  if (p && p.type === "title") return rtToPlain(p.title) || "Untitled";
-  return "Untitled";
-}
+/** Map a Notion page to your BlogPost shape */
+export function pageToPost(page: PageObjectResponse): BlogPost {
+  const props = page.properties;
 
-function getRichText(page: PageObjectResponse, key: string): string | undefined {
-  const prop = page.properties[key as keyof typeof page.properties];
-  if (prop && typeof prop === "object" && "type" in prop && (prop as any).type === "rich_text") {
-    const txt = rtToPlain((prop as any).rich_text as RichTextItemResponse[]);
-    return txt || undefined;
-  }
-  return undefined;
-}
+  const title = getTitle(props, "Title");
+  const slug =
+    getRichText(props, "slug") || // if slug is rich_text
+    getTitle(props, "slug"); // or sometimes teams make slug a title – handle both
 
-function getDate(page: PageObjectResponse, key = "publish_date"): string | undefined {
-  const prop = page.properties[key as keyof typeof page.properties];
-  if (prop && typeof prop === "object" && "type" in prop && (prop as any).type === "date") {
-    return (prop as any).date?.start ?? undefined;
-  }
-  return undefined;
-}
-
-function getCheckbox(page: PageObjectResponse, key = "published"): boolean | undefined {
-  const prop = page.properties[key as keyof typeof page.properties];
-  if (prop && typeof prop === "object" && "type" in prop && (prop as any).type === "checkbox") {
-    return (prop as any).checkbox as boolean;
-  }
-  return undefined;
-}
-
-function getMultiSelect(page: PageObjectResponse, key = "tags"): string[] {
-  const prop = page.properties[key as keyof typeof page.properties];
-  if (prop && typeof prop === "object" && "type" in prop && (prop as any).type === "multi_select") {
-    return ((prop as any).multi_select as { name: string }[]).map((t) => t.name).filter(Boolean);
-  }
-  return [];
-}
-
-function getAuthor(page: PageObjectResponse, key = "Author"): string | undefined {
-  // Commonly a "people" property; if yours is rich_text, change to getRichText(page, "Author")
-  const prop = page.properties[key as keyof typeof page.properties];
-  if (prop && typeof prop === "object" && "type" in prop) {
-    if ((prop as any).type === "people") {
-      const people = (prop as any).people as Array<{ name?: string; person?: unknown }>;
-      const names = people.map((p) => p?.name).filter(Boolean) as string[];
-      return names.join(", ") || undefined;
-    }
-    if ((prop as any).type === "rich_text") {
-      const txt = rtToPlain((prop as any).rich_text);
-      return txt || undefined;
-    }
-  }
-  return undefined;
-}
-
-// ---------- Mappers ----------
-function mapPost(page: PageObjectResponse): Post {
-  const title = getTitle(page);
-  const slugRaw = getRichText(page, "slug"); // lower-case per your DB
-  const date = getDate(page, "publish_date"); // lower-case per your DB
-  const excerpt = getRichText(page, "excerpt"); // optional; if you have one
-  const tags = getMultiSelect(page, "tags"); // lower-case per your DB
-  const author = getAuthor(page, "Author"); // case-sensitive
-  const cover = coverFrom(page);
-
-  const slug = (slugRaw?.trim().toLowerCase() || page.id.replace(/-/g, "")) as string;
+  const published = getCheckbox(props, "published");
+  const publish_date = getDate(props, "publish_date");
+  const tags = getMultiSelect(props, "tags");
+  const author = getAuthor(props, "Author");
 
   return {
     id: page.id,
-    slug,
     title,
-    excerpt,
-    date,
+    slug,
+    published,
+    publish_date,
     tags,
     author,
-    cover,
-    notionUrl: page.url,
   };
 }
 
-// ---------- Public API ----------
-export async function getPosts(): Promise<Post[]> {
-  type QueryParams = Parameters<typeof notion.databases.query>[0];
+// ----- Public API functions ----- //
 
-  // typed filter/sorts for your exact property names
-  const filter: NonNullable<QueryParams["filter"]> = {
-    property: "published",
-    checkbox: { equals: true },
-  };
-
-  const sorts: NonNullable<QueryParams["sorts"]> = [
-    { property: "publish_date", direction: "descending" },
-  ];
-
-  const res = await notion.databases.query({
-    database_id: DB_ID,
-    filter,
-    sorts,
-    page_size: 50,
+export async function queryPosts(params: Omit<QueryDatabaseParameters, "database_id"> = {}) {
+  const response: QueryDatabaseResponse = await notion.databases.query({
+    database_id: NOTION_DB_ID,
+    ...params,
   });
 
-  const pages = res.results
+  // Only keep full pages and map
+  const posts: BlogPost[] = response.results
     .filter(isFullPage)
-    .filter((p) => getCheckbox(p, "published") !== false);
+    .map((p) => pageToPost(p));
 
-  return pages.map(mapPost);
+  return posts;
 }
 
-export async function getPostBySlug(slug: string): Promise<Post | null> {
-  const posts = await getPosts();
-  return posts.find((p) => p.slug === slug) ?? null;
+export async function getAllPublishedPosts() {
+  return queryPosts({
+    filter: {
+      and: [
+        { property: "published", checkbox: { equals: true } },
+      ],
+    },
+    sorts: [
+      { property: "publish_date", direction: "descending" },
+    ],
+  });
 }
 
-export async function getBlocks(pageId: string): Promise<BlockObjectResponse[]> {
-  const blocks: BlockObjectResponse[] = [];
-  let cursor: string | undefined = undefined;
+export async function getPostBySlug(slug: string) {
+  const results = await queryPosts({
+    filter: {
+      and: [
+        {
+          property: "slug",
+          rich_text: { equals: slug },
+        },
+        { property: "published", checkbox: { equals: true } },
+      ],
+    },
+    page_size: 1,
+  });
 
-  do {
-    const res = await notion.blocks.children.list({
-      block_id: pageId,
-      start_cursor: cursor,
-      page_size: 50,
-    });
-
-    res.results.forEach((b) => {
-      if (isFullBlock(b)) blocks.push(b);
-    });
-
-    cursor = res.has_more ? res.next_cursor ?? undefined : undefined;
-  } while (cursor);
-
-  return blocks;
+  return results[0] ?? null;
 }
