@@ -13,20 +13,19 @@ import type {
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 export const NOTION_DB_ID = process.env.NOTION_DB_ID as string;
 
-// Public shape used by your app
+// --- Public shape used by your app ---
 export type BlogPost = {
   id: string;
   title: string;
   slug: string;
   published: boolean;
-  publish_date: string | null;
-  /** Compatibility alias for components using `post.date` */
-  date: string | null;
+  publish_date?: string;        // ISO date or undefined
+  date?: string;                // compat alias for components using post.date
   tags: string[];
   author: string | null;
-  /** Optional (fallbacks handled in pages) */
   excerpt: string | null;
   cover: string | null;
+  notionUrl: string;            // for "View on Notion"
 };
 
 // ---------- Type guards & utilities ----------
@@ -38,7 +37,6 @@ function isFullPage(
 
 type PropertyMap = PageObjectResponse["properties"];
 
-/** Pick the first existing property key from a priority list (case flexibility). */
 function pickKey(props: PropertyMap, candidates: string[]): string | null {
   for (const k of candidates) {
     if (k in props) return k;
@@ -69,11 +67,14 @@ function getCheckbox(props: PropertyMap, keys: string | string[]): boolean {
   return !!(p && p.type === "checkbox" && p.checkbox === true);
 }
 
-function getDate(props: PropertyMap, keys: string | string[]): string | null {
+function getDate(
+  props: PropertyMap,
+  keys: string | string[]
+): string | undefined {
   const key = Array.isArray(keys) ? pickKey(props, keys) : keys;
-  if (!key) return null;
+  if (!key) return undefined;
   const p = props[key];
-  if (!p || p.type !== "date" || !p.date?.start) return null;
+  if (!p || p.type !== "date" || !p.date?.start) return undefined;
   return p.date.start;
 }
 
@@ -93,7 +94,7 @@ function getAuthor(props: PropertyMap, keys: string | string[]): string | null {
 
   if (p.type === "people" && p.people.length > 0) {
     const first = p.people[0];
-    // Notion Users object often carries a 'name' at runtime; not in endpoint typings
+    // Notion Users often include a runtime 'name' not typed in endpoints
     // @ts-expect-error runtime property from Users API
     return (first as unknown as { name?: string; email?: string }).name ?? null;
   }
@@ -116,7 +117,10 @@ function getPageCoverUrl(page: PageObjectResponse): string | null {
   if (c.type === "file") return c.file.url ?? null;
   return null;
 }
-function getFilesFirstUrl(props: PropertyMap, keys: string | string[]): string | null {
+function getFilesFirstUrl(
+  props: PropertyMap,
+  keys: string | string[]
+): string | null {
   const key = Array.isArray(keys) ? pickKey(props, keys) : keys;
   if (!key) return null;
   const p = props[key];
@@ -138,12 +142,17 @@ function getUrlProp(props: PropertyMap, keys: string | string[]): string | null 
 export function pageToPost(page: PageObjectResponse): BlogPost {
   const props = page.properties;
 
-  // Your canonical fields (with soft casing fallbacks)
+  // Canonical fields (with soft casing fallbacks)
   const title = getTitle(props, ["Title", "title"]);
   const slug =
     getRichText(props, ["slug", "Slug"]) || getTitle(props, ["slug", "Slug"]);
   const published = getCheckbox(props, ["published", "Published"]);
-  const publish_date = getDate(props, ["publish_date", "Publish Date", "Publish date", "Date"]);
+  const publish_date = getDate(props, [
+    "publish_date",
+    "Publish Date",
+    "Publish date",
+    "Date",
+  ]);
   const tags = getMultiSelect(props, ["tags", "Tags"]);
   const author = getAuthor(props, ["Author", "author"]);
 
@@ -170,6 +179,7 @@ export function pageToPost(page: PageObjectResponse): BlogPost {
     author,
     excerpt,
     cover,
+    notionUrl: page.url, // Notion workspace URL (works if page is shared/public)
   };
 }
 
@@ -191,7 +201,7 @@ export async function getAllPublishedPosts() {
   });
 }
 
-/** Compatibility alias used by your pages */
+// Compatibility alias used by your pages
 export async function getPosts() {
   return getAllPublishedPosts();
 }
