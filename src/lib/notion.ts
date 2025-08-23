@@ -64,7 +64,7 @@ function getRichText(page: PageObjectResponse, key: string): string | undefined 
     | undefined;
   if (prop && prop.type === "rich_text") {
     const txt = rtToPlain(prop.rich_text);
-    return txt ? txt : undefined;
+    return txt || undefined;
   }
   return undefined;
 }
@@ -76,7 +76,7 @@ function getDate(page: PageObjectResponse, keyA = "PublishedAt", keyB = "Date"):
   const pb = page.properties[keyB as keyof typeof page.properties] as
     | PageObjectResponse["properties"][string]
     | undefined;
-  const p = (pa ?? pb);
+  const p = pa ?? pb;
   if (p && p.type === "date") return p.date?.start ?? undefined;
   return undefined;
 }
@@ -89,10 +89,7 @@ function getCheckbox(page: PageObjectResponse, key = "Published"): boolean | und
   return undefined;
 }
 
-function getMultiSelect(
-  page: PageObjectResponse,
-  key = "Tags"
-): string[] {
+function getMultiSelect(page: PageObjectResponse, key = "Tags"): string[] {
   const prop = page.properties[key as keyof typeof page.properties] as
     | PageObjectResponse["properties"][string]
     | undefined;
@@ -127,20 +124,27 @@ function mapPost(page: PageObjectResponse): Post {
 
 // ---------- Public API ----------
 export async function getPosts(): Promise<Post[]> {
+  type QueryParams = Parameters<typeof notion.databases.query>[0];
+
+  const filter: NonNullable<QueryParams["filter"]> = {
+    property: "Published",
+    checkbox: { equals: true },
+  };
+
+  const sorts: NonNullable<QueryParams["sorts"]> = [
+    { property: "PublishedAt", direction: "descending" },
+    { property: "Date", direction: "descending" },
+  ];
+
   const res = await notion.databases.query({
     database_id: DB_ID,
-    // If your DB has no "Published" checkbox, remove this filter:
-    filter: { property: "Published", checkbox: { equals: true } } as any, // filter typing is very strict; safe to cast here
-    sorts: [
-      { property: "PublishedAt", direction: "descending" } as any,
-      { property: "Date", direction: "descending" } as any,
-    ],
+    filter,
+    sorts,
     page_size: 50,
   });
 
   const pages = res.results
     .filter(isFullPage)
-    // if a DB page is not published (or missing property), skip
     .filter((p) => getCheckbox(p, "Published") !== false);
 
   return pages.map(mapPost);
@@ -166,7 +170,7 @@ export async function getBlocks(pageId: string): Promise<BlockObjectResponse[]> 
       if (isFullBlock(b)) blocks.push(b);
     });
 
-    cursor = res.has_more ? (res.next_cursor ?? undefined) : undefined;
+    cursor = res.has_more ? res.next_cursor ?? undefined : undefined;
   } while (cursor);
 
   return blocks;

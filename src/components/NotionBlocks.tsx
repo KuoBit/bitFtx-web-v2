@@ -19,8 +19,7 @@ export default function NotionBlocks({ blocks }: { blocks: BlockObjectResponse[]
         const t = b.type;
 
         if (t === "paragraph") {
-          const text = b.paragraph.rich_text;
-          return <p key={b.id}>{rtToPlain(text)}</p>;
+          return <p key={b.id}>{rtToPlain(b.paragraph.rich_text)}</p>;
         }
 
         if (t === "heading_1") {
@@ -80,18 +79,30 @@ export default function NotionBlocks({ blocks }: { blocks: BlockObjectResponse[]
           );
         }
 
-        // Fallback for text-capable blocks we didn't explicitly branch for
-        const anyRichText =
-          (t in b && (b as any)[t]?.rich_text) as RichTextItemResponse[] | undefined;
-        const md = rtToPlain(anyRichText);
-        if (md) {
+        // Extra common blocks (typed)
+        if (t === "to_do") {
+          const todo = b.to_do;
           return (
-            <ReactMarkdown key={b.id} remarkPlugins={[remarkGfm]}>
-              {md}
-            </ReactMarkdown>
+            <div key={b.id} className="my-2 text-sm">
+              <label className="inline-flex items-start gap-2">
+                <input type="checkbox" checked={!!todo.checked} readOnly />
+                <span>{rtToPlain(todo.rich_text)}</span>
+              </label>
+            </div>
           );
         }
 
+        if (t === "toggle") {
+          const toggle = b.toggle;
+          return (
+            <details key={b.id} className="my-2 rounded border border-white/10 bg-white/5 p-3">
+              <summary className="cursor-pointer">{rtToPlain(toggle.rich_text)}</summary>
+              {/* We’re not fetching children recursively here; can be extended later */}
+            </details>
+          );
+        }
+
+        // Unknown/unsupported block types: return empty container (no `any` fallback)
         return <div key={b.id} />;
       })}
     </div>
