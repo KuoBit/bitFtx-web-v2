@@ -11,7 +11,10 @@ import type {
   UserObjectResponse,
   PartialUserObjectResponse,
   GroupObjectResponse,
+  DatabaseObjectResponse,            // <--
+  PartialDatabaseObjectResponse,     // <--
 } from "@notionhq/client/build/src/api-endpoints";
+
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 export const NOTION_DB_ID = process.env.NOTION_DB_ID as string;
@@ -33,9 +36,13 @@ export type BlogPost = {
 
 // ---------- Type guards & utilities ----------
 function isFullPage(
-  page: PageObjectResponse | PartialPageObjectResponse
-): page is PageObjectResponse {
-  return "properties" in page;
+  v:
+    | PageObjectResponse
+    | PartialPageObjectResponse
+    | DatabaseObjectResponse
+    | PartialDatabaseObjectResponse
+): v is PageObjectResponse {
+  return v.object === "page" && "properties" in v;
 }
 
 type PropertyMap = PageObjectResponse["properties"];
