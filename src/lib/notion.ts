@@ -20,6 +20,7 @@ export type Post = {
   date?: string;
   tags: string[];
   cover?: string | null;
+  author?: string;
   notionUrl: string;
 };
 
@@ -49,63 +50,71 @@ function coverFrom(page: PageObjectResponse): string | null {
   return null;
 }
 
-// Notion property readers (flexible to different naming)
-function getTitleProp(page: PageObjectResponse, nameA = "Title", nameB = "Name") {
-  const propA = page.properties[nameA as keyof typeof page.properties];
-  const propB = page.properties[nameB as keyof typeof page.properties];
-  const p = (propA ?? propB) as PageObjectResponse["properties"][string] | undefined;
-  if (p && p.type === "title") return rtToPlain(p.title);
+// ----- Notion property readers (case-sensitive to your DB) -----
+function getTitle(page: PageObjectResponse): string {
+  const p = page.properties["Title"];
+  if (p && p.type === "title") return rtToPlain(p.title) || "Untitled";
   return "Untitled";
 }
 
 function getRichText(page: PageObjectResponse, key: string): string | undefined {
-  const prop = page.properties[key as keyof typeof page.properties] as
-    | PageObjectResponse["properties"][string]
-    | undefined;
-  if (prop && prop.type === "rich_text") {
-    const txt = rtToPlain(prop.rich_text);
+  const prop = page.properties[key as keyof typeof page.properties];
+  if (prop && typeof prop === "object" && "type" in prop && (prop as any).type === "rich_text") {
+    const txt = rtToPlain((prop as any).rich_text as RichTextItemResponse[]);
     return txt || undefined;
   }
   return undefined;
 }
 
-function getDate(page: PageObjectResponse, keyA = "PublishedAt", keyB = "Date"): string | undefined {
-  const pa = page.properties[keyA as keyof typeof page.properties] as
-    | PageObjectResponse["properties"][string]
-    | undefined;
-  const pb = page.properties[keyB as keyof typeof page.properties] as
-    | PageObjectResponse["properties"][string]
-    | undefined;
-  const p = pa ?? pb;
-  if (p && p.type === "date") return p.date?.start ?? undefined;
+function getDate(page: PageObjectResponse, key = "publish_date"): string | undefined {
+  const prop = page.properties[key as keyof typeof page.properties];
+  if (prop && typeof prop === "object" && "type" in prop && (prop as any).type === "date") {
+    return (prop as any).date?.start ?? undefined;
+  }
   return undefined;
 }
 
-function getCheckbox(page: PageObjectResponse, key = "Published"): boolean | undefined {
-  const prop = page.properties[key as keyof typeof page.properties] as
-    | PageObjectResponse["properties"][string]
-    | undefined;
-  if (prop && prop.type === "checkbox") return prop.checkbox;
+function getCheckbox(page: PageObjectResponse, key = "published"): boolean | undefined {
+  const prop = page.properties[key as keyof typeof page.properties];
+  if (prop && typeof prop === "object" && "type" in prop && (prop as any).type === "checkbox") {
+    return (prop as any).checkbox as boolean;
+  }
   return undefined;
 }
 
-function getMultiSelect(page: PageObjectResponse, key = "Tags"): string[] {
-  const prop = page.properties[key as keyof typeof page.properties] as
-    | PageObjectResponse["properties"][string]
-    | undefined;
-  if (prop && prop.type === "multi_select") {
-    return prop.multi_select.map((t) => t.name).filter(Boolean);
+function getMultiSelect(page: PageObjectResponse, key = "tags"): string[] {
+  const prop = page.properties[key as keyof typeof page.properties];
+  if (prop && typeof prop === "object" && "type" in prop && (prop as any).type === "multi_select") {
+    return ((prop as any).multi_select as { name: string }[]).map((t) => t.name).filter(Boolean);
   }
   return [];
 }
 
+function getAuthor(page: PageObjectResponse, key = "Author"): string | undefined {
+  // Commonly a "people" property; if yours is rich_text, change to getRichText(page, "Author")
+  const prop = page.properties[key as keyof typeof page.properties];
+  if (prop && typeof prop === "object" && "type" in prop) {
+    if ((prop as any).type === "people") {
+      const people = (prop as any).people as Array<{ name?: string; person?: unknown }>;
+      const names = people.map((p) => p?.name).filter(Boolean) as string[];
+      return names.join(", ") || undefined;
+    }
+    if ((prop as any).type === "rich_text") {
+      const txt = rtToPlain((prop as any).rich_text);
+      return txt || undefined;
+    }
+  }
+  return undefined;
+}
+
 // ---------- Mappers ----------
 function mapPost(page: PageObjectResponse): Post {
-  const title = getTitleProp(page);
-  const slugRaw = getRichText(page, "Slug");
-  const date = getDate(page);
-  const excerpt = getRichText(page, "Excerpt");
-  const tags = getMultiSelect(page, "Tags");
+  const title = getTitle(page);
+  const slugRaw = getRichText(page, "slug"); // lower-case per your DB
+  const date = getDate(page, "publish_date"); // lower-case per your DB
+  const excerpt = getRichText(page, "excerpt"); // optional; if you have one
+  const tags = getMultiSelect(page, "tags"); // lower-case per your DB
+  const author = getAuthor(page, "Author"); // case-sensitive
   const cover = coverFrom(page);
 
   const slug = (slugRaw?.trim().toLowerCase() || page.id.replace(/-/g, "")) as string;
@@ -117,6 +126,7 @@ function mapPost(page: PageObjectResponse): Post {
     excerpt,
     date,
     tags,
+    author,
     cover,
     notionUrl: page.url,
   };
@@ -126,14 +136,14 @@ function mapPost(page: PageObjectResponse): Post {
 export async function getPosts(): Promise<Post[]> {
   type QueryParams = Parameters<typeof notion.databases.query>[0];
 
+  // typed filter/sorts for your exact property names
   const filter: NonNullable<QueryParams["filter"]> = {
-    property: "Published",
+    property: "published",
     checkbox: { equals: true },
   };
 
   const sorts: NonNullable<QueryParams["sorts"]> = [
-    { property: "PublishedAt", direction: "descending" },
-    { property: "Date", direction: "descending" },
+    { property: "publish_date", direction: "descending" },
   ];
 
   const res = await notion.databases.query({
@@ -145,7 +155,7 @@ export async function getPosts(): Promise<Post[]> {
 
   const pages = res.results
     .filter(isFullPage)
-    .filter((p) => getCheckbox(p, "Published") !== false);
+    .filter((p) => getCheckbox(p, "published") !== false);
 
   return pages.map(mapPost);
 }

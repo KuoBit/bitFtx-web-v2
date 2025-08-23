@@ -1,7 +1,4 @@
 // /src/components/NotionBlocks.tsx
-import React from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import type {
   BlockObjectResponse,
   RichTextItemResponse,
@@ -18,30 +15,17 @@ export default function NotionBlocks({ blocks }: { blocks: BlockObjectResponse[]
       {blocks.map((b) => {
         const t = b.type;
 
-        if (t === "paragraph") {
-          return <p key={b.id}>{rtToPlain(b.paragraph.rich_text)}</p>;
-        }
+        if (t === "paragraph") return <p key={b.id}>{rtToPlain(b.paragraph.rich_text)}</p>;
+        if (t === "heading_1") return <h2 key={b.id}>{rtToPlain(b.heading_1.rich_text)}</h2>;
+        if (t === "heading_2") return <h3 key={b.id}>{rtToPlain(b.heading_2.rich_text)}</h3>;
+        if (t === "heading_3") return <h4 key={b.id}>{rtToPlain(b.heading_3.rich_text)}</h4>;
 
-        if (t === "heading_1") {
-          return <h2 key={b.id}>{rtToPlain(b.heading_1.rich_text)}</h2>;
-        }
-        if (t === "heading_2") {
-          return <h3 key={b.id}>{rtToPlain(b.heading_2.rich_text)}</h3>;
-        }
-        if (t === "heading_3") {
-          return <h4 key={b.id}>{rtToPlain(b.heading_3.rich_text)}</h4>;
-        }
-
-        if (t === "bulleted_list_item") {
+        if (t === "bulleted_list_item")
           return <li key={b.id}>{rtToPlain(b.bulleted_list_item.rich_text)}</li>;
-        }
-        if (t === "numbered_list_item") {
+        if (t === "numbered_list_item")
           return <li key={b.id}>{rtToPlain(b.numbered_list_item.rich_text)}</li>;
-        }
 
-        if (t === "quote") {
-          return <blockquote key={b.id}>{rtToPlain(b.quote.rich_text)}</blockquote>;
-        }
+        if (t === "quote") return <blockquote key={b.id}>{rtToPlain(b.quote.rich_text)}</blockquote>;
 
         if (t === "code") {
           const lang = b.code.language ?? "text";
@@ -67,9 +51,7 @@ export default function NotionBlocks({ blocks }: { blocks: BlockObjectResponse[]
           );
         }
 
-        if (t === "divider") {
-          return <hr key={b.id} />;
-        }
+        if (t === "divider") return <hr key={b.id} />;
 
         if (t === "callout") {
           return (
@@ -79,7 +61,6 @@ export default function NotionBlocks({ blocks }: { blocks: BlockObjectResponse[]
           );
         }
 
-        // Extra common blocks (typed)
         if (t === "to_do") {
           const todo = b.to_do;
           return (
@@ -102,7 +83,7 @@ export default function NotionBlocks({ blocks }: { blocks: BlockObjectResponse[]
           );
         }
 
-        // Unknown/unsupported block types: return empty container (no `any` fallback)
+        // Unsupported types: render nothing (keeps UI clean)
         return <div key={b.id} />;
       })}
     </div>
