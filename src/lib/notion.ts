@@ -8,6 +8,9 @@ import type {
   BlockObjectResponse,
   PartialBlockObjectResponse,
   ListBlockChildrenResponse,
+  UserObjectResponse,
+  PartialUserObjectResponse,
+  GroupObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
@@ -97,6 +100,21 @@ function hasUserName(
   return "name" in u;
 }
 
+type AnyPerson = UserObjectResponse | PartialUserObjectResponse | GroupObjectResponse;
+
+function isUserObject(
+  u: AnyPerson
+): u is UserObjectResponse | PartialUserObjectResponse {
+  return u.object === "user";
+}
+
+function extractUserName(
+  u: UserObjectResponse | PartialUserObjectResponse
+): string | null {
+  const maybeName = (u as { name?: string }).name;
+  return typeof maybeName === "string" && maybeName ? maybeName : null;
+}
+
 function getAuthor(props: PropertyMap, keys: string | string[]): string | null {
   const key = Array.isArray(keys) ? pickKey(props, keys) : keys;
   if (!key) return null;
@@ -104,21 +122,28 @@ function getAuthor(props: PropertyMap, keys: string | string[]): string | null {
   if (!p) return null;
 
   if (p.type === "people" && p.people.length > 0) {
-    const first = p.people[0];
-    return hasUserName(first) && typeof first.name === "string" && first.name
-      ? first.name
-      : null;
+    const first = p.people[0] as AnyPerson;
+    if (isUserObject(first)) {
+      const name = extractUserName(first);
+      if (name) return name;
+    }
+    // If it's a group or no name is available, fall through to other props or null
+    return null;
   }
+
   if (p.type === "rich_text") {
     const txt = p.rich_text.map((r) => r.plain_text).join("").trim();
     return txt || null;
   }
+
   if (p.type === "title") {
     const txt = p.title.map((r) => r.plain_text).join("").trim();
     return txt || null;
   }
+
   return null;
 }
+
 
 // --- Cover helpers ---
 function getPageCoverUrl(page: PageObjectResponse): string | null {
