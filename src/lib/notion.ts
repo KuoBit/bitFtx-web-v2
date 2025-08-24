@@ -206,9 +206,21 @@ export function pageToPost(page: PageObjectResponse): BlogPost {
 }
 
 // ---------- Queries ----------
-export async function queryPosts(
-  params: Omit<QueryDatabaseParameters, "database_id"> = {}
-) {
+function isValidationErrorForMissingProp(e: unknown) {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "code" in e &&
+    // @ts-ignore
+    e.code === "validation_error" &&
+    // @ts-ignore
+    typeof e.message === "string" &&
+    // @ts-ignore
+    /Could not find property with name or id/i.test(e.message)
+  );
+}
+
+async function queryMap(params: Omit<QueryDatabaseParameters, "database_id"> = {}) {
   const response: QueryDatabaseResponse = await notion.databases.query({
     database_id: NOTION_DB_ID,
     ...params,
@@ -216,22 +228,45 @@ export async function queryPosts(
   return response.results.filter(isFullPage).map(pageToPost);
 }
 
-// Case-tolerant published filter + safe sort
+// Try several filter variants; skip those that 400 due to missing props.
+async function tryQueryVariants(
+  variants: Array<Omit<QueryDatabaseParameters, "database_id">>
+) {
+  for (const v of variants) {
+    try {
+      const rows = await queryMap(v);
+      return rows;
+    } catch (e) {
+      if (isValidationErrorForMissingProp(e)) {
+        // Try next variant
+        continue;
+      }
+      throw e;
+    }
+  }
+  // If all variants failed due to missing props, fetch all and filter client-side
+  const all = await queryMap();
+  return all;
+}
+
 export async function getAllPublishedPosts() {
-  return queryPosts({
-    filter: {
-      and: [
-        {
-          or: [
-            { property: "Published", checkbox: { equals: true } },
-            { property: "published", checkbox: { equals: true } },
-          ],
-        },
-      ],
-    },
-    // Avoid property-name-dependent sorts
-    sorts: [{ timestamp: "created_time", direction: "descending" }],
+  const publishKeys = ["Published", "published"];
+  const variants = publishKeys.map((k) => ({
+    filter: { and: [{ property: k as any, checkbox: { equals: true } }] },
+    // avoid relying on a specific date prop for sorting
+    sorts: [{ timestamp: "created_time" as const, direction: "descending" as const }],
+  }));
+
+  let rows = await tryQueryVariants(variants);
+  // Client-side filter if we had to fall back
+  rows = rows.filter((r) => r.published);
+  // Sort latest first (stable even if no Publish_Date)
+  rows.sort((a, b) => {
+    const da = a.publish_date ? Date.parse(a.publish_date) : 0;
+    const db = b.publish_date ? Date.parse(b.publish_date) : 0;
+    return db - da;
   });
+  return rows;
 }
 
 // Compatibility alias used by your pages
@@ -240,26 +275,39 @@ export async function getPosts() {
 }
 
 export async function getPostBySlug(slugValue: string) {
-  const results = await queryPosts({
-    filter: {
-      and: [
-        {
-          or: [
-            { property: "Slug", rich_text: { equals: slugValue } },
-            { property: "slug", rich_text: { equals: slugValue } },
+  const publishKeys = ["Published", "published"] as const;
+  const slugKeys = ["Slug", "slug"] as const;
+
+  const variants: Array<Omit<QueryDatabaseParameters, "database_id">> = [];
+  for (const s of slugKeys) {
+    for (const p of publishKeys) {
+      variants.push({
+        filter: {
+          and: [
+            { property: s as any, rich_text: { equals: slugValue } },
+            { property: p as any, checkbox: { equals: true } },
           ],
         },
-        {
-          or: [
-            { property: "Published", checkbox: { equals: true } },
-            { property: "published", checkbox: { equals: true } },
-          ],
-        },
-      ],
-    },
-    page_size: 1,
-  });
-  return results[0] ?? null;
+        page_size: 1,
+      });
+    }
+    // also try without Published filter, in case DB has no Published column
+    variants.push({
+      filter: { and: [{ property: s as any, rich_text: { equals: slugValue } }] },
+      page_size: 1,
+    });
+  }
+
+  let rows = await tryQueryVariants(variants);
+  if (rows.length > 0) return rows[0];
+
+  // Last resort: fetch all, then find by slug client-side (case-insensitive)
+  const all = await queryMap();
+  const normalized = slugValue.trim().toLowerCase();
+  const match =
+    all.find((r) => (r.slug || "").trim().toLowerCase() === normalized && r.published) ??
+    all.find((r) => (r.slug || "").trim().toLowerCase() === normalized);
+  return match ?? null;
 }
 
 // ---------- Blocks (content) ----------
@@ -308,3 +356,4 @@ export async function getBlocks(pageId: string): Promise<FullBlock[]> {
 
   return Promise.all(top.map(hydrate));
 }
+
