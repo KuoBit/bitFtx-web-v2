@@ -5,7 +5,6 @@ import type {
   QueryDatabaseParameters,
   QueryDatabaseResponse,
   PageObjectResponse,
-  // PropertyItemObjectResponse,  // ❌ remove unused
 } from "@notionhq/client/build/src/api-endpoints";
 import type { ExtendedRecordMap, Block } from "notion-types";
 
@@ -26,7 +25,7 @@ export type PostMeta = {
   cover?: string | null;
 };
 
-// ---------- Helpers (remove unused getCheckbox)
+// ---------- Helpers
 type PropertyMap = PageObjectResponse["properties"];
 
 function pickKey(props: PropertyMap, candidates: string[]): string | null {
@@ -93,7 +92,9 @@ export async function getPublishedMeta(): Promise<PostMeta[]> {
 
     const slug = getRichText(props, ["Slug", "slug"]);
     const title = getTitle(props, ["Title", "title"]) || "Untitled";
-    const date = getDate(props, ["Publish_Date", "publish_date", "Date"]) || p.created_time;
+    const date =
+      getDate(props, ["Publish_Date", "publish_date", "Date"]) ||
+      p.created_time;
     const author = getFirstPersonName(props, ["Author", "author"]);
     const preview =
       getRichText(props, ["Preview", "preview"]) ||
@@ -101,18 +102,25 @@ export async function getPublishedMeta(): Promise<PostMeta[]> {
 
     let cover: string | null = null;
     if (p.cover) {
-      cover =
-        p.cover.type === "external"
-          ? p.cover.external.url
-          : p.cover.file?.url ?? null;
+      if (p.cover.type === "external") {
+        cover = p.cover.external.url;
+      } else if (p.cover.type === "file") {
+        cover = p.cover.file?.url ?? null;
+      }
     } else {
       const coverKey = pickKey(props, ["Cover", "cover", "Hero", "hero"]);
       if (coverKey) {
         const prop = props[coverKey];
         if (prop.type === "files" && prop.files.length) {
           const f = prop.files[0];
-          cover =
-            f.type === "external" ? f.external?.url ?? null : f.file?.url ?? null;
+          // ✅ Narrow union before accessing fields
+          if (f.type === "external" && f.external?.url) {
+            cover = f.external.url;
+          } else if (f.type === "file" && f.file?.url) {
+            cover = f.file.url;
+          } else {
+            cover = null;
+          }
         } else if (prop.type === "url") {
           cover = prop.url ?? null;
         }
