@@ -2,15 +2,18 @@
 import { NotionAPI } from "notion-client";
 import { Client } from "@notionhq/client";
 import type {
+  QueryDatabaseParameters,
   QueryDatabaseResponse,
   PageObjectResponse,
-  QueryDatabaseParameters,
+  PropertyItemObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import type { ExtendedRecordMap, Block } from "notion-types";
 
 const notionPublic = new NotionAPI(); // unofficial (recordMap)
 const notionOfficial = new Client({ auth: process.env.NOTION_TOKEN });
 
-export const NOTION_DB_ID = process.env.NOTION_DB_ID || process.env.NOTION_DATABASE_ID || "";
+export const NOTION_DB_ID =
+  process.env.NOTION_DB_ID || process.env.NOTION_DATABASE_ID || "";
 
 // ---- Types
 export type PostMeta = {
@@ -23,15 +26,68 @@ export type PostMeta = {
   cover?: string | null;
 };
 
-function isFullPage(p: QueryDatabaseResponse["results"][number]): p is PageObjectResponse {
-  return p.object === "page" && "properties" in p;
+// ---------- Helpers for metadata extraction (typed, no any)
+type PropertyMap = PageObjectResponse["properties"];
+
+function pickKey(props: PropertyMap, candidates: string[]): string | null {
+  for (const k of candidates) if (k in props) return k;
+  return null;
 }
 
-// Safe extractors for common field names
-function getText(rt?: { plain_text?: string }[]): string {
-  return (rt?.map((r) => r.plain_text).join("") || "").trim();
+function getTitle(props: PropertyMap, keys: string[]): string {
+  const key = pickKey(props, keys);
+  if (!key) return "";
+  const p = props[key];
+  if (!p || p.type !== "title") return "";
+  return p.title.map((r) => r.plain_text).join("").trim();
 }
 
+function getRichText(props: PropertyMap, keys: string[]): string {
+  const key = pickKey(props, keys);
+  if (!key) return "";
+  const p = props[key];
+  if (!p || p.type !== "rich_text") return "";
+  return p.rich_text.map((r) => r.plain_text).join("").trim();
+}
+
+function getCheckbox(props: PropertyMap, keys: string[]): boolean {
+  const key = pickKey(props, keys);
+  if (!key) return false;
+  const p = props[key];
+  return !!(p && p.type === "checkbox" && p.checkbox);
+}
+
+function getDate(props: PropertyMap, keys: string[]): string {
+  const key = pickKey(props, keys);
+  if (!key) return "";
+  const p = props[key];
+  if (!p || p.type !== "date") return "";
+  return p.date?.start ?? "";
+}
+
+function getFirstPersonName(props: PropertyMap, keys: string[]): string | null {
+  const key = pickKey(props, keys);
+  if (!key) return null;
+  const p = props[key];
+  if (!p) return null;
+  if (p.type === "people" && p.people.length) {
+    const maybe = (p.people[0] as unknown as { name?: string }).name;
+    if (typeof maybe === "string" && maybe.trim()) return maybe.trim();
+  }
+  if (p.type === "rich_text") {
+    const t = p.rich_text.map((r) => r.plain_text).join("").trim();
+    return t || null;
+  }
+  return null;
+}
+
+function isFullPage(
+  r: QueryDatabaseResponse["results"][number]
+): r is PageObjectResponse {
+  return r.object === "page" && "properties" in r;
+}
+
+// ---------- Meta fetchers
 export async function getPublishedMeta(): Promise<PostMeta[]> {
   const resp = await notionOfficial.databases.query({
     database_id: NOTION_DB_ID,
@@ -40,33 +96,34 @@ export async function getPublishedMeta(): Promise<PostMeta[]> {
   } as Omit<QueryDatabaseParameters, "database_id"> & { database_id: string });
 
   return resp.results.filter(isFullPage).map((p) => {
-    const pr = p.properties as any;
-    const slug = getText(pr?.Slug?.rich_text || []);
-    const title = getText(pr?.Title?.title || []) || "Untitled";
-    const date = pr?.Publish_Date?.date?.start || p.created_time || "";
-    const author =
-      pr?.Author?.people?.[0]?.name ||
-      getText(pr?.Author?.rich_text || []) ||
-      null;
+    const props = p.properties;
 
+    const slug = getRichText(props, ["Slug", "slug"]);
+    const title = getTitle(props, ["Title", "title"]) || "Untitled";
+    const date = getDate(props, ["Publish_Date", "publish_date", "Date"]) || p.created_time;
+    const author = getFirstPersonName(props, ["Author", "author"]);
     const preview =
-      getText(pr?.Preview?.rich_text || []) ||
-      getText(pr?.Excerpt?.rich_text || []) ||
-      "";
+      getRichText(props, ["Preview", "preview"]) ||
+      getRichText(props, ["Excerpt", "excerpt"]);
 
     // cover: prefer page.cover, otherwise first files/url prop named Cover/Hero
     let cover: string | null = null;
     if (p.cover) {
       cover =
-        p.cover.type === "external" ? p.cover.external.url : p.cover.file?.url || null;
+        p.cover.type === "external"
+          ? p.cover.external.url
+          : p.cover.file?.url ?? null;
     } else {
-      const f = pr?.Cover ?? pr?.Hero ?? null;
-      if (f?.type === "files" && Array.isArray(f.files) && f.files.length) {
-        const first = f.files[0];
-        cover =
-          first.type === "external" ? first.external?.url : first.file?.url || null;
-      } else if (f?.type === "url") {
-        cover = f.url || null;
+      const coverKey = pickKey(props, ["Cover", "cover", "Hero", "hero"]);
+      if (coverKey) {
+        const prop = props[coverKey];
+        if (prop.type === "files" && prop.files.length) {
+          const f = prop.files[0];
+          cover =
+            f.type === "external" ? f.external?.url ?? null : f.file?.url ?? null;
+        } else if (prop.type === "url") {
+          cover = prop.url ?? null;
+        }
       }
     }
 
@@ -85,21 +142,32 @@ export async function getMetaBySlug(slug: string): Promise<PostMeta | null> {
   return hit || null;
 }
 
-export async function getRecordMap(pageId: string) {
-  // Full content via unofficial API (react-notion-x)
-  const recordMap = await notionPublic.getPage(pageId);
+// ---------- Content (recordMap) via notion-client
+export async function getRecordMap(pageId: string): Promise<ExtendedRecordMap> {
+  const recordMap = (await notionPublic.getPage(pageId)) as ExtendedRecordMap;
 
-  // Optional: strip Notion internal “property_*” and collection wrappers (as you did before)
-  const filteredBlocks = Object.fromEntries(
-    Object.entries(recordMap.block || {}).filter(([_, blk]: any) => {
-      const t = blk?.value?.type || "";
-      return !(
-        t.startsWith("property_") ||
-        t === "collection_view_page" ||
-        (t === "page" && blk?.value?.parent_table === "collection")
-      );
-    })
-  );
+  // Filter out Notion internal “property_*” & collection wrappers — fully typed, no `any`
+  const entries = Object.entries(recordMap.block ?? {});
+  const filtered = entries.filter(([, wrapper]) => {
+    // wrapper is { role, value }, value is Block
+    const value = (wrapper as { value?: Block }).value;
+    const type = value?.type ?? "";
+    const parentTable = (value as Extract<Block, { type: "page" }>)?.parent_table;
 
-  return { ...recordMap, block: filteredBlocks, collection: {}, collection_query: {}, collection_view: {}, schema: {} };
+    const isInternal =
+      type.startsWith("property_") ||
+      type === "collection_view_page" ||
+      (type === "page" && parentTable === "collection");
+
+    return !isInternal;
+  });
+
+  return {
+    ...recordMap,
+    block: Object.fromEntries(filtered),
+    collection: {},
+    collection_query: {},
+    collection_view: {},
+    schema: {},
+  };
 }
