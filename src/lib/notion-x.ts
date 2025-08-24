@@ -5,11 +5,11 @@ import type {
   QueryDatabaseParameters,
   QueryDatabaseResponse,
   PageObjectResponse,
-  PropertyItemObjectResponse,
+  // PropertyItemObjectResponse,  // ❌ remove unused
 } from "@notionhq/client/build/src/api-endpoints";
 import type { ExtendedRecordMap, Block } from "notion-types";
 
-const notionPublic = new NotionAPI(); // unofficial (recordMap)
+const notionPublic = new NotionAPI();
 const notionOfficial = new Client({ auth: process.env.NOTION_TOKEN });
 
 export const NOTION_DB_ID =
@@ -26,7 +26,7 @@ export type PostMeta = {
   cover?: string | null;
 };
 
-// ---------- Helpers for metadata extraction (typed, no any)
+// ---------- Helpers (remove unused getCheckbox)
 type PropertyMap = PageObjectResponse["properties"];
 
 function pickKey(props: PropertyMap, candidates: string[]): string | null {
@@ -48,13 +48,6 @@ function getRichText(props: PropertyMap, keys: string[]): string {
   const p = props[key];
   if (!p || p.type !== "rich_text") return "";
   return p.rich_text.map((r) => r.plain_text).join("").trim();
-}
-
-function getCheckbox(props: PropertyMap, keys: string[]): boolean {
-  const key = pickKey(props, keys);
-  if (!key) return false;
-  const p = props[key];
-  return !!(p && p.type === "checkbox" && p.checkbox);
 }
 
 function getDate(props: PropertyMap, keys: string[]): string {
@@ -106,7 +99,6 @@ export async function getPublishedMeta(): Promise<PostMeta[]> {
       getRichText(props, ["Preview", "preview"]) ||
       getRichText(props, ["Excerpt", "excerpt"]);
 
-    // cover: prefer page.cover, otherwise first files/url prop named Cover/Hero
     let cover: string | null = null;
     if (p.cover) {
       cover =
@@ -146,10 +138,8 @@ export async function getMetaBySlug(slug: string): Promise<PostMeta | null> {
 export async function getRecordMap(pageId: string): Promise<ExtendedRecordMap> {
   const recordMap = (await notionPublic.getPage(pageId)) as ExtendedRecordMap;
 
-  // Filter out Notion internal “property_*” & collection wrappers — fully typed, no `any`
   const entries = Object.entries(recordMap.block ?? {});
   const filtered = entries.filter(([, wrapper]) => {
-    // wrapper is { role, value }, value is Block
     const value = (wrapper as { value?: Block }).value;
     const type = value?.type ?? "";
     const parentTable = (value as Extract<Block, { type: "page" }>)?.parent_table;

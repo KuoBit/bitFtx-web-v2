@@ -12,8 +12,14 @@ export async function generateStaticParams() {
   return slugs.filter(Boolean).map((slug) => ({ slug }));
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const meta = await getMetaBySlug(params.slug);
+// NOTE: In Next 15, params is a Promise for app router
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const meta = await getMetaBySlug(slug);
   return {
     title: meta ? `${meta.title} — BitFtx Blog` : "Post — BitFtx Blog",
     description: meta?.preview || "BitFtx blog post",
@@ -36,8 +42,15 @@ function fmtDate(d?: string) {
   }
 }
 
-export default async function BlogPostPage({ params }: { params: { slug: string } }) {
-  const meta = await getMetaBySlug(params.slug);
+// NOTE: In Next 15, params is a Promise for app router
+export default async function BlogPostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+
+  const meta = await getMetaBySlug(slug);
   if (!meta) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
@@ -79,7 +92,6 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
           </div>
         ) : null}
 
-        {/* Notion content */}
         <div className="prose prose-invert max-w-none">
           <NotionXRenderer recordMap={recordMap} />
         </div>
