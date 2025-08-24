@@ -103,23 +103,8 @@ function Block({ block }: { block: FullBlock }) {
       );
     }
 
-    // Newer wrapper blocks (ensure list content isn't dropped)
-    case "bulleted_list":
-      return (
-        <ul className="my-2">
-          {block.children?.map((child) => (
-            <Block key={child.id} block={child} />
-          ))}
-        </ul>
-      );
-    case "numbered_list":
-      return (
-        <ol className="my-2">
-          {block.children?.map((child) => (
-            <Block key={child.id} block={child} />
-          ))}
-        </ol>
-      );
+    // NOTE: Do NOT switch on "bulleted_list" / "numbered_list" — not in SDK union.
+    // Consecutive list items are grouped by groupLists(...) below.
 
     case "bulleted_list_item":
       return (
