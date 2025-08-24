@@ -7,7 +7,6 @@ import type {
   PartialPageObjectResponse,
   BlockObjectResponse,
   PartialBlockObjectResponse,
-  ListBlockChildrenResponse,
   UserObjectResponse,
   PartialUserObjectResponse,
   GroupObjectResponse,

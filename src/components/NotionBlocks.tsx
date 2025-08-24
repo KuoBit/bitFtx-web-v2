@@ -2,7 +2,10 @@
 "use client";
 
 import React from "react";
-import type { BlockObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import type {
+  BlockObjectResponse,
+  RichTextItemResponse,
+} from "@notionhq/client/build/src/api-endpoints";
 
 // Keep local structural type matching getBlocks()
 export type FullBlock = BlockObjectResponse & { children?: FullBlock[] };
