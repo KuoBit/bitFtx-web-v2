@@ -4,7 +4,7 @@
 import React from "react";
 import type { BlockObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 
-// Match getBlocks return (adds children)
+// Keep local structural type matching getBlocks()
 export type FullBlock = BlockObjectResponse & { children?: FullBlock[] };
 
 type Props = { blocks: FullBlock[] };
@@ -70,7 +70,7 @@ function Block({ block }: { block: FullBlock }) {
       return (
         <li className="ml-5 list-decimal">
           <RichText richText={block.numbered_list_item.rich_text} />
-          {block.children && <List blocks={block.children} /* ordered */ />}
+          {block.children && <List blocks={block.children} />}
         </li>
       );
     case "to_do":
