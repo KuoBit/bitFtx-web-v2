@@ -1,12 +1,11 @@
 // src/components/NotionBlocks.tsx
 "use client";
 
-import Image from "next/image";
 import React from "react";
 import type { BlockObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 
 // Match getBlocks return (adds children)
-type FullBlock = BlockObjectResponse & { children?: FullBlock[] };
+export type FullBlock = BlockObjectResponse & { children?: FullBlock[] };
 
 type Props = { blocks: FullBlock[] };
 
@@ -61,9 +60,19 @@ function Block({ block }: { block: FullBlock }) {
       );
     }
     case "bulleted_list_item":
-      return <li className="ml-5 list-disc"><RichText richText={block.bulleted_list_item.rich_text} />{block.children && <List blocks={block.children} />}</li>;
+      return (
+        <li className="ml-5 list-disc">
+          <RichText richText={block.bulleted_list_item.rich_text} />
+          {block.children && <List blocks={block.children} />}
+        </li>
+      );
     case "numbered_list_item":
-      return <li className="ml-5 list-decimal"><RichText richText={block.numbered_list_item.rich_text} />{block.children && <List blocks={block.children} ordered /></li>;
+      return (
+        <li className="ml-5 list-decimal">
+          <RichText richText={block.numbered_list_item.rich_text} />
+          {block.children && <List blocks={block.children} /* ordered */ />}
+        </li>
+      );
     case "to_do":
       return (
         <div className="my-2 flex items-start gap-2">
@@ -161,7 +170,7 @@ function groupLists(blocks: FullBlock[]) {
   return out;
 }
 
-function List({ blocks, ordered = false }: { blocks: FullBlock[]; ordered?: boolean }) {
+function List({ blocks }: { blocks: FullBlock[]; ordered?: boolean }) {
   const grouped = groupLists(blocks);
   return (
     <>
@@ -187,5 +196,5 @@ function List({ blocks, ordered = false }: { blocks: FullBlock[]; ordered?: bool
 }
 
 export default function NotionBlocks({ blocks }: Props) {
-  return <div>{<List blocks={blocks} />}</div>;
+  return <div><List blocks={blocks} /></div>;
 }
