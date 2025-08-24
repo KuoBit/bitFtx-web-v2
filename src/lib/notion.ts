@@ -206,21 +206,20 @@ export function pageToPost(page: PageObjectResponse): BlogPost {
 }
 
 // ---------- Queries ----------
+import { APIErrorCode, isNotionClientError } from "@notionhq/client";
+
 function isValidationErrorForMissingProp(e: unknown) {
   return (
-    typeof e === "object" &&
-    e !== null &&
-    "code" in e &&
-    // @ts-ignore
-    e.code === "validation_error" &&
-    // @ts-ignore
+    isNotionClientError(e) &&
+    e.code === APIErrorCode.ValidationError &&
     typeof e.message === "string" &&
-    // @ts-ignore
     /Could not find property with name or id/i.test(e.message)
   );
 }
 
-async function queryMap(params: Omit<QueryDatabaseParameters, "database_id"> = {}) {
+type QueryParams = Omit<QueryDatabaseParameters, "database_id">;
+
+async function queryMap(params: QueryParams = {}) {
   const response: QueryDatabaseResponse = await notion.databases.query({
     database_id: NOTION_DB_ID,
     ...params,
@@ -229,17 +228,14 @@ async function queryMap(params: Omit<QueryDatabaseParameters, "database_id"> = {
 }
 
 // Try several filter variants; skip those that 400 due to missing props.
-async function tryQueryVariants(
-  variants: Array<Omit<QueryDatabaseParameters, "database_id">>
-) {
+async function tryQueryVariants(variants: Array<QueryParams>) {
   for (const v of variants) {
     try {
       const rows = await queryMap(v);
       return rows;
     } catch (e) {
       if (isValidationErrorForMissingProp(e)) {
-        // Try next variant
-        continue;
+        continue; // try next variant
       }
       throw e;
     }
@@ -249,24 +245,45 @@ async function tryQueryVariants(
   return all;
 }
 
+// Small helpers to build typed-ish filters without `any`
+type NotionFilter = NonNullable<QueryDatabaseParameters["filter"]>;
+type NotionSort = NonNullable<QueryDatabaseParameters["sorts"]>[number];
+
+function checkboxEquals(property: string, equals: boolean): NotionFilter {
+  return {
+    property,
+    checkbox: { equals },
+  } as unknown as NotionFilter;
+}
+
+function richTextEquals(property: string, equals: string): NotionFilter {
+  return {
+    property,
+    rich_text: { equals },
+  } as unknown as NotionFilter;
+}
+
+const createdDesc: NotionSort = {
+  timestamp: "created_time",
+  direction: "descending",
+};
+
 export async function getAllPublishedPosts() {
   const publishKeys = ["Published", "published"];
-  const variants = publishKeys.map((k) => ({
-    filter: { and: [{ property: k as any, checkbox: { equals: true } }] },
-    // avoid relying on a specific date prop for sorting
-    sorts: [{ timestamp: "created_time" as const, direction: "descending" as const }],
+
+  const variants: QueryParams[] = publishKeys.map((k) => ({
+    filter: { and: [checkboxEquals(k, true)] } as NotionFilter,
+    sorts: [createdDesc],
   }));
 
-  let rows = await tryQueryVariants(variants);
-  // Client-side filter if we had to fall back
-  rows = rows.filter((r) => r.published);
-  // Sort latest first (stable even if no Publish_Date)
-  rows.sort((a, b) => {
+  const rows0 = await tryQueryVariants(variants);
+  const rows = rows0.filter((r) => r.published);
+  const sorted = [...rows].sort((a, b) => {
     const da = a.publish_date ? Date.parse(a.publish_date) : 0;
     const db = b.publish_date ? Date.parse(b.publish_date) : 0;
     return db - da;
   });
-  return rows;
+  return sorted;
 }
 
 // Compatibility alias used by your pages
@@ -278,35 +295,36 @@ export async function getPostBySlug(slugValue: string) {
   const publishKeys = ["Published", "published"] as const;
   const slugKeys = ["Slug", "slug"] as const;
 
-  const variants: Array<Omit<QueryDatabaseParameters, "database_id">> = [];
+  const variants: QueryParams[] = [];
+
   for (const s of slugKeys) {
     for (const p of publishKeys) {
       variants.push({
         filter: {
-          and: [
-            { property: s as any, rich_text: { equals: slugValue } },
-            { property: p as any, checkbox: { equals: true } },
-          ],
-        },
+          and: [richTextEquals(s, slugValue), checkboxEquals(p, true)],
+        } as NotionFilter,
         page_size: 1,
       });
     }
-    // also try without Published filter, in case DB has no Published column
+    // Also try without Published filter, in case DB has no Published column
     variants.push({
-      filter: { and: [{ property: s as any, rich_text: { equals: slugValue } }] },
+      filter: { and: [richTextEquals(s, slugValue)] } as NotionFilter,
       page_size: 1,
     });
   }
 
-  let rows = await tryQueryVariants(variants);
+  const rows = await tryQueryVariants(variants);
   if (rows.length > 0) return rows[0];
 
   // Last resort: fetch all, then find by slug client-side (case-insensitive)
   const all = await queryMap();
   const normalized = slugValue.trim().toLowerCase();
   const match =
-    all.find((r) => (r.slug || "").trim().toLowerCase() === normalized && r.published) ??
+    all.find(
+      (r) => (r.slug || "").trim().toLowerCase() === normalized && r.published
+    ) ??
     all.find((r) => (r.slug || "").trim().toLowerCase() === normalized);
+
   return match ?? null;
 }
 
@@ -343,8 +361,13 @@ export async function getBlocks(pageId: string): Promise<FullBlock[]> {
   async function hydrate(block: BlockObjectResponse): Promise<FullBlock> {
     let children: FullBlock[] | undefined;
 
-    if (block.type === "synced_block" && block.synced_block.synced_from?.block_id) {
-      const sourceChildren = await listChildrenOnce(block.synced_block.synced_from.block_id);
+    if (
+      block.type === "synced_block" &&
+      block.synced_block.synced_from?.block_id
+    ) {
+      const sourceChildren = await listChildrenOnce(
+        block.synced_block.synced_from.block_id
+      );
       children = await Promise.all(sourceChildren.map(hydrate));
     } else if (block.has_children) {
       const kids = await listChildrenOnce(block.id);
