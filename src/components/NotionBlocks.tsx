@@ -80,17 +80,29 @@ function Block({ block }: { block: FullBlock }) {
           <RichText richText={block.quote.rich_text} />
         </blockquote>
       );
-    case "callout": {
-      const c = block.callout;
-      return (
-        <div className="my-4 flex gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
-          <div className="select-none">{c.icon?.emoji ?? "💡"}</div>
-          <div className="text-white/90">
-            <RichText richText={c.rich_text} />
+      case "callout": {
+        const c = block.callout;
+      
+        // Safely derive a display icon from the union type
+        const displayIcon =
+          c.icon?.type === "emoji"
+            ? c.icon.emoji
+            : c.icon?.type === "external"
+            ? "🔗"
+            : c.icon?.type === "file"
+            ? "🗂️"
+            : "💡";
+      
+        return (
+          <div className="my-4 flex gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="select-none">{displayIcon}</div>
+            <div className="text-white/90">
+              <RichText richText={c.rich_text} />
+            </div>
           </div>
-        </div>
-      );
-    }
+        );
+      }
+      
     case "bulleted_list_item":
       return (
         <li className="ml-5 list-disc">
