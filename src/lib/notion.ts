@@ -171,7 +171,7 @@ function getUrlProp(props: PropertyMap, keys: string | string[]): string | null 
 export function pageToPost(page: PageObjectResponse): BlogPost {
   const props = page.properties;
 
-  // Exact DB names with light fallbacks
+  // Accept common variants of property names
   const title = getTitle(props, ["Title", "title"]);
   const slug =
     getRichText(props, ["Slug", "slug"]) || getTitle(props, ["Slug", "slug"]);
@@ -216,10 +216,21 @@ export async function queryPosts(
   return response.results.filter(isFullPage).map(pageToPost);
 }
 
+// Case-tolerant published filter + safe sort
 export async function getAllPublishedPosts() {
   return queryPosts({
-    filter: { and: [{ property: "Published", checkbox: { equals: true } }] },
-    sorts: [{ property: "Publish_Date", direction: "descending" }],
+    filter: {
+      and: [
+        {
+          or: [
+            { property: "Published", checkbox: { equals: true } },
+            { property: "published", checkbox: { equals: true } },
+          ],
+        },
+      ],
+    },
+    // Avoid property-name-dependent sorts
+    sorts: [{ timestamp: "created_time", direction: "descending" }],
   });
 }
 
@@ -232,8 +243,18 @@ export async function getPostBySlug(slugValue: string) {
   const results = await queryPosts({
     filter: {
       and: [
-        { property: "Slug", rich_text: { equals: slugValue } },
-        { property: "Published", checkbox: { equals: true } },
+        {
+          or: [
+            { property: "Slug", rich_text: { equals: slugValue } },
+            { property: "slug", rich_text: { equals: slugValue } },
+          ],
+        },
+        {
+          or: [
+            { property: "Published", checkbox: { equals: true } },
+            { property: "published", checkbox: { equals: true } },
+          ],
+        },
       ],
     },
     page_size: 1,

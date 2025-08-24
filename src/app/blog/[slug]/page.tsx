@@ -9,7 +9,9 @@ export const revalidate = 300;
 
 export async function generateStaticParams() {
   const posts = await getPosts();
-  return posts.map((p) => ({ slug: p.slug }));
+  return posts
+    .filter((p) => p.slug) // guard against empty slugs
+    .map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata(props: unknown) {
@@ -88,6 +90,7 @@ export default async function BlogPostPage(props: unknown) {
               height={630}
               className="h-auto w-full object-cover"
               priority
+              unoptimized
             />
           </div>
         ) : null}

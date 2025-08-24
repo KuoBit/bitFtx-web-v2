@@ -19,23 +19,22 @@ function RichText({ richText }: { richText: RichTextItemResponse[] }) {
         const content = t.plain_text ?? "";
         let el: React.ReactNode = content;
 
-        if (t.href) el = (
-          <a
-            href={t.href}
-            className="underline decoration-white/30 hover:decoration-white"
-          >
-            {content}
-          </a>
-        );
-        if (t.annotations?.code) el = (
-          <code className="rounded bg-white/10 px-1 py-0.5">{el}</code>
-        );
+        if (t.href)
+          el = (
+            <a
+              href={t.href}
+              className="underline decoration-white/30 hover:decoration-white"
+            >
+              {content}
+            </a>
+          );
+        if (t.annotations?.code)
+          el = <code className="rounded bg-white/10 px-1 py-0.5">{el}</code>;
         if (t.annotations?.bold) el = <strong>{el}</strong>;
         if (t.annotations?.italic) el = <em>{el}</em>;
         if (t.annotations?.underline) el = <span className="underline">{el}</span>;
-        if (t.annotations?.strikethrough) el = (
-          <span className="line-through">{el}</span>
-        );
+        if (t.annotations?.strikethrough)
+          el = <span className="line-through">{el}</span>;
 
         return <React.Fragment key={i}>{el}</React.Fragment>;
       })}
@@ -74,35 +73,54 @@ function Block({ block }: { block: FullBlock }) {
           <RichText richText={block.heading_3.rich_text} />
         </h3>
       );
+
     case "quote":
       return (
         <blockquote className="my-4 border-l-2 border-white/15 pl-4 text-white/80">
           <RichText richText={block.quote.rich_text} />
         </blockquote>
       );
-      case "callout": {
-        const c = block.callout;
-      
-        // Safely derive a display icon from the union type
-        const displayIcon =
-          c.icon?.type === "emoji"
-            ? c.icon.emoji
-            : c.icon?.type === "external"
-            ? "🔗"
-            : c.icon?.type === "file"
-            ? "🗂️"
-            : "💡";
-      
-        return (
-          <div className="my-4 flex gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
-            <div className="select-none">{displayIcon}</div>
-            <div className="text-white/90">
-              <RichText richText={c.rich_text} />
-            </div>
+
+    case "callout": {
+      const c = block.callout;
+      // Safe union handling for icon
+      const displayIcon =
+        c.icon?.type === "emoji"
+          ? c.icon.emoji
+          : c.icon?.type === "external"
+          ? "🔗"
+          : c.icon?.type === "file"
+          ? "🗂️"
+          : "💡";
+
+      return (
+        <div className="my-4 flex gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
+          <div className="select-none">{displayIcon}</div>
+          <div className="text-white/90">
+            <RichText richText={c.rich_text} />
           </div>
-        );
-      }
-      
+        </div>
+      );
+    }
+
+    // Newer wrapper blocks (ensure list content isn't dropped)
+    case "bulleted_list":
+      return (
+        <ul className="my-2">
+          {block.children?.map((child) => (
+            <Block key={child.id} block={child} />
+          ))}
+        </ul>
+      );
+    case "numbered_list":
+      return (
+        <ol className="my-2">
+          {block.children?.map((child) => (
+            <Block key={child.id} block={child} />
+          ))}
+        </ol>
+      );
+
     case "bulleted_list_item":
       return (
         <li className="ml-5 list-disc">
@@ -110,6 +128,7 @@ function Block({ block }: { block: FullBlock }) {
           {block.children && <List blocks={block.children} />}
         </li>
       );
+
     case "numbered_list_item":
       return (
         <li className="ml-5 list-decimal">
@@ -117,6 +136,7 @@ function Block({ block }: { block: FullBlock }) {
           {block.children && <List blocks={block.children} />}
         </li>
       );
+
     case "to_do":
       return (
         <div className="my-2 flex items-start gap-2">
@@ -131,6 +151,7 @@ function Block({ block }: { block: FullBlock }) {
           </div>
         </div>
       );
+
     case "toggle":
       return (
         <details className="my-2 rounded-lg border border-white/10 p-3">
@@ -144,16 +165,17 @@ function Block({ block }: { block: FullBlock }) {
           )}
         </details>
       );
+
     case "code":
       return (
         <pre className="my-4 overflow-x-auto rounded-xl border border-white/10 bg-black/40 p-4">
-          <code>
-            {block.code.rich_text?.map((r) => r.plain_text).join("")}
-          </code>
+          <code>{block.code.rich_text?.map((r) => r.plain_text).join("")}</code>
         </pre>
       );
+
     case "divider":
       return <hr className="my-6 border-white/10" />;
+
     case "image": {
       const img = block.image;
       const url = img.type === "external" ? img.external.url : img.file.url;
@@ -161,11 +183,7 @@ function Block({ block }: { block: FullBlock }) {
       return (
         <figure className="my-6 overflow-hidden rounded-xl border border-white/10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={url}
-            alt={caption || "image"}
-            className="h-auto w-full object-cover"
-          />
+          <img src={url} alt={caption || "image"} className="h-auto w-full object-cover" />
           {caption ? (
             <figcaption className="p-2 text-center text-sm text-white/60">
               {caption}
@@ -174,16 +192,73 @@ function Block({ block }: { block: FullBlock }) {
         </figure>
       );
     }
+
     case "embed":
       return (
         <div className="my-6 overflow-hidden rounded-xl border border-white/10">
-          <iframe
-            src={block.embed.url}
-            className="aspect-video w-full"
-            allowFullScreen
-          />
+          <iframe src={block.embed.url} className="aspect-video w-full" allowFullScreen />
         </div>
       );
+
+    case "bookmark":
+      return (
+        <a
+          href={block.bookmark.url}
+          className="my-4 block rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/10"
+          target="_blank"
+          rel="noreferrer"
+        >
+          {block.bookmark.caption?.length ? (
+            <RichText richText={block.bookmark.caption} />
+          ) : (
+            <span className="text-white/80">{block.bookmark.url}</span>
+          )}
+        </a>
+      );
+
+    case "video": {
+      const v = block.video;
+      const vUrl = v.type === "external" ? v.external.url : v.file.url;
+      return (
+        <div className="my-6 overflow-hidden rounded-xl border border-white/10">
+          <video src={vUrl} className="w-full" controls />
+        </div>
+      );
+    }
+
+    case "file": {
+      const f = block.file;
+      const fUrl = f.type === "external" ? f.external.url : f.file.url;
+      const caption = f.caption?.map((r) => r.plain_text).join("");
+      return (
+        <a
+          href={fUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="my-4 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10"
+        >
+          🗂️ <span className="truncate">{caption || fUrl}</span>
+        </a>
+      );
+    }
+
+    case "pdf": {
+      const p = block.pdf;
+      const pUrl = p.type === "external" ? p.external.url : p.file.url;
+      return (
+        <div className="my-6 overflow-hidden rounded-xl border border-white/10">
+          <iframe src={pUrl} className="aspect-video w-full" />
+        </div>
+      );
+    }
+
+    case "equation":
+      return (
+        <pre className="my-4 rounded-xl border border-white/10 bg-black/30 p-3">
+          {block.equation.expression}
+        </pre>
+      );
+
     case "table": {
       const rows = block.children ?? [];
       return (
@@ -207,6 +282,8 @@ function Block({ block }: { block: FullBlock }) {
         </div>
       );
     }
+
+    // Gracefully skip unsupported/rare types
     default:
       return null;
   }
@@ -275,6 +352,7 @@ function List({ blocks }: { blocks: FullBlock[]; ordered?: boolean }) {
 }
 
 export default function NotionBlocks({ blocks }: Props) {
+  if (!blocks?.length) return <div className="text-white/60">No content.</div>;
   return (
     <div>
       <List blocks={blocks} />
