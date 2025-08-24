@@ -166,6 +166,5 @@ export async function getRecordMap(pageId: string): Promise<ExtendedRecordMap> {
     collection: {},
     collection_query: {},
     collection_view: {},
-    schema: {},
   };
 }
