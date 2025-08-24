@@ -1,27 +1,24 @@
-// /src/app/blog/[slug]/page.tsx
-import Link from "next/link";
+// src/app/blog/[slug]/page.tsx
 import Image from "next/image";
-import { getBlocks, getPostBySlug, getPosts } from "@/lib/notion";
-import NotionBlocks from "@/components/NotionBlocks";
+import Link from "next/link";
+import NotionXRenderer from "@/components/NotionXRenderer";
+import { getMetaBySlug, getPublishedSlugs, getRecordMap } from "@/lib/notion-x";
 
-// Refresh signed URLs & content every 5 minutes
+// Refresh every 5 minutes (for signed file URLs)
 export const revalidate = 300;
 
 export async function generateStaticParams() {
-  const posts = await getPosts();
-  return posts
-    .filter((p) => p.slug) // guard against empty slugs
-    .map((p) => ({ slug: p.slug }));
+  const slugs = await getPublishedSlugs();
+  return slugs.filter(Boolean).map((slug) => ({ slug }));
 }
 
-export async function generateMetadata(props: unknown) {
-  const { params } = props as { params: { slug: string } };
-  const post = await getPostBySlug(params.slug);
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const meta = await getMetaBySlug(params.slug);
   return {
-    title: post ? `${post.title} — BitFtx Blog` : "Post — BitFtx Blog",
-    description: post?.excerpt ?? "BitFtx blog post",
-    openGraph: post?.cover
-      ? { images: [{ url: post.cover, width: 1200, height: 630 }] }
+    title: meta ? `${meta.title} — BitFtx Blog` : "Post — BitFtx Blog",
+    description: meta?.preview || "BitFtx blog post",
+    openGraph: meta?.cover
+      ? { images: [{ url: meta.cover, width: 1200, height: 630 }] }
       : undefined,
   };
 }
@@ -35,15 +32,13 @@ function fmtDate(d?: string) {
       day: "2-digit",
     });
   } catch {
-    return d;
+    return d || "";
   }
 }
 
-export default async function BlogPostPage(props: unknown) {
-  const { params } = props as { params: { slug: string } };
-
-  const post = await getPostBySlug(params.slug);
-  if (!post) {
+export default async function BlogPostPage({ params }: { params: { slug: string } }) {
+  const meta = await getMetaBySlug(params.slug);
+  if (!meta) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
         <h1 className="text-2xl font-semibold">Post not found</h1>
@@ -58,34 +53,23 @@ export default async function BlogPostPage(props: unknown) {
     );
   }
 
-  const blocks = await getBlocks(post.id);
+  const recordMap = await getRecordMap(meta.id);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <article>
         <header className="mb-6">
-          <div className="text-xs text-white/60">{fmtDate(post.date)}</div>
-          <h1 className="mt-1 text-3xl font-semibold">{post.title}</h1>
-          {post.excerpt ? <p className="mt-2 text-white/70">{post.excerpt}</p> : null}
-          {post.tags?.length ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {post.tags.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-white/70"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          ) : null}
+          <div className="text-xs text-white/60">{fmtDate(meta.date)}</div>
+          <h1 className="mt-1 text-3xl font-semibold">{meta.title}</h1>
+          {meta.preview ? <p className="mt-2 text-white/70">{meta.preview}</p> : null}
+          {meta.author ? <div className="mt-1 text-white/60 text-sm">By {meta.author}</div> : null}
         </header>
 
-        {post.cover ? (
+        {meta.cover ? (
           <div className="mb-8 overflow-hidden rounded-xl border border-white/10">
             <Image
-              src={post.cover}
-              alt={post.title}
+              src={meta.cover}
+              alt={meta.title}
               width={1200}
               height={630}
               className="h-auto w-full object-cover"
@@ -95,21 +79,15 @@ export default async function BlogPostPage(props: unknown) {
           </div>
         ) : null}
 
-        <NotionBlocks blocks={blocks} />
+        {/* Notion content */}
+        <div className="prose prose-invert max-w-none">
+          <NotionXRenderer recordMap={recordMap} />
+        </div>
 
         <footer className="mt-10 flex items-center justify-between text-sm text-white/60">
           <Link href="/blog" className="text-emerald-300 hover:text-emerald-200">
             ← Back to Blog
           </Link>
-          <a
-            href={post.notionUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-white"
-            title="View on Notion"
-          >
-            View on Notion ↗
-          </a>
         </footer>
       </article>
     </main>
