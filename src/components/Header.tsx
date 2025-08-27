@@ -29,9 +29,7 @@ const moreNav: { section: string; items: NavItem[] }[] = [
   },
   {
     section: "Prediction",
-    items: [
-      { label: "Markets", href: "/markets" },
-    ],
+    items: [{ label: "Markets", href: "/markets" }],
   },
   {
     section: "Project",
@@ -40,6 +38,9 @@ const moreNav: { section: string; items: NavItem[] }[] = [
       { label: "About", href: "/about" },
       { label: "Careers", href: "/careers" },
       { label: "Safety", href: "/safety" },
+      { label: "Press", href: "/press" },           // ← NEW
+      { label: "Ambassadors", href: "/ambassadors" }, // ← NEW
+      { label: "Security", href: "/security" },     // ← NEW
       { label: "Terms", href: "/legal/terms" },
       { label: "Privacy", href: "/legal/privacy" },
     ],
@@ -53,19 +54,21 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur supports-[backdrop-filter]:bg-black/50">
       <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-  <Link href="/" aria-label="BitFtx home" className="flex items-center">
-    <AnimatedLogo size={48} />
-  </Link>
-  <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-xs text-emerald-300">
-    Staging
-  </span>
-</div>
+        <div className="flex items-center gap-3">
+          <Link href="/" aria-label="BitFtx home" className="flex items-center">
+            <AnimatedLogo size={48} />
+          </Link>
+          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-xs text-emerald-300">
+            Staging
+          </span>
+        </div>
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-6 text-sm text-white/80">
           {coreNav.map((item) => (
-            <Link key={item.href} href={item.href} className="hover:text-white">{item.label}</Link>
+            <Link key={item.href} href={item.href} className="hover:text-white">
+              {item.label}
+            </Link>
           ))}
 
           <div className="relative">
@@ -86,7 +89,9 @@ export default function Header() {
                 <div className="grid grid-cols-3 gap-4">
                   {moreNav.map((group) => (
                     <div key={group.section}>
-                      <div className="mb-2 text-xs uppercase tracking-wide text-white/50">{group.section}</div>
+                      <div className="mb-2 text-xs uppercase tracking-wide text-white/50">
+                        {group.section}
+                      </div>
                       <ul className="space-y-1">
                         {group.items.map((i) => (
                           <li key={i.href}>
@@ -130,20 +135,44 @@ export default function Header() {
         <div className="md:hidden border-t border-white/10">
           <div className="mx-auto max-w-6xl px-4 py-4 space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <Link href="/" className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10" onClick={() => setMobileOpen(false)}>Home</Link>
+              <Link
+                href="/"
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                onClick={() => setMobileOpen(false)}
+              >
+                Home
+              </Link>
               {coreNav.map((i) => (
-                <Link key={i.href} href={i.href} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10" onClick={() => setMobileOpen(false)}>
+                <Link
+                  key={i.href}
+                  href={i.href}
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                  onClick={() => setMobileOpen(false)}
+                >
                   {i.label}
                 </Link>
               ))}
-              <Link href="/links" className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10" onClick={() => setMobileOpen(false)}>Official Links</Link>
+              <Link
+                href="/links"
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                onClick={() => setMobileOpen(false)}
+              >
+                Official Links
+              </Link>
             </div>
 
             <div className="pt-2">
-              <div className="mb-2 text-xs uppercase tracking-wide text-white/50">More</div>
+              <div className="mb-2 text-xs uppercase tracking-wide text-white/50">
+                More
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 {moreNav.flatMap((g) => g.items).map((i) => (
-                  <Link key={i.href} href={i.href} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10" onClick={() => setMobileOpen(false)}>
+                  <Link
+                    key={i.href}
+                    href={i.href}
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                    onClick={() => setMobileOpen(false)}
+                  >
                     {i.label}
                   </Link>
                 ))}

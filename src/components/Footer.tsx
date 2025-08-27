@@ -21,6 +21,8 @@ export default function Footer() {
           <ul className="space-y-2 text-white/70">
             <li><Link href="/about" className="hover:text-white">About</Link></li>
             <li><Link href="/careers" className="hover:text-white">Careers</Link></li>
+            <li><Link href="/press" className="hover:text-white">Press & Media</Link></li>       {/* ← NEW */}
+            <li><Link href="/ambassadors" className="hover:text-white">Ambassadors</Link></li>  {/* ← NEW */}
             <li><Link href="/roadmap" className="hover:text-white">Roadmap</Link></li>
             <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
           </ul>
@@ -39,6 +41,7 @@ export default function Footer() {
         <div>
           <div className="mb-3 font-semibold">Legal</div>
           <ul className="space-y-2 text-white/70">
+            <li><Link href="/security" className="hover:text-white">Security</Link></li>        {/* ← NEW */}
             <li><Link href="/safety" className="hover:text-white">Safety</Link></li>
             <li><Link href="/legal/terms" className="hover:text-white">Terms</Link></li>
             <li><Link href="/legal/privacy" className="hover:text-white">Privacy</Link></li>
@@ -49,7 +52,6 @@ export default function Footer() {
       <div className="border-t border-white/10">
         <div className="mx-auto max-w-6xl px-4 py-6 text-xs text-white/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <div>© {new Date().getFullYear()} BitFtx • All rights reserved</div>
-          {/* Replaces hard-coded anchors with canonical social links */}
           <SocialLinks compact />
         </div>
       </div>
